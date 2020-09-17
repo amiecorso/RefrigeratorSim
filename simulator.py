@@ -1,3 +1,6 @@
+from pulp import *
+import pandas as pd
+import numpy as np
 from refrigerator import Refrigerator
 
 class Simulator:
@@ -9,6 +12,9 @@ class Simulator:
         self.path_to_output = path_to_output
         self.outfile = open(path_to_output, 'w')
         self.outfile.write("time,fridge_temp,fridge_on,moer,lbs_co2\n")  # write CSV headers
+
+    def pulptime(self):
+
 
     def run_simulation(self):
         for row in self.moer_data.head(200).index:
