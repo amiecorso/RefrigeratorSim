@@ -6,6 +6,7 @@ class Simulator:
         self.timestep = 5
         self.current_time = 0
         self.moer_data = moer_data
+        self.path_to_output = path_to_output
         self.outfile = open(path_to_output, 'w')
         self.outfile.write("time,fridge_temp,fridge_on,moer,lbs_co2\n")  # write CSV headers
 
@@ -38,6 +39,8 @@ class Simulator:
         return ",".join(str_row_data) + "\n"
 
     def lbs_co2_produced_this_timestep(self, moer):
+        if not self.fridge.on:
+            return 0
         megawatts_per_watt = 1 / 1000000
         hours_per_minute = 1 / 60
         return round(moer * (self.fridge.wattage * megawatts_per_watt) * (self.timestep * hours_per_minute), 8)
