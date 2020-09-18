@@ -53,8 +53,9 @@ class Visualizer:
         fig.tight_layout()
 
         fridge_on_subset = data.loc[data['fridge_on'] == True]
-        print(fridge_on_subset.head())
+        #print(fridge_on_subset.head())
         total_run_time = fridge_on_subset.shape[0] * self.simulator.timestep
+        print("=" * 50)
         print("Total refrigerator run time: ", total_run_time, " mins")
         print("Total lbs CO2 emitted: ", cumulative_total)
 

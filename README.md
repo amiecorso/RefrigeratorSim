@@ -13,6 +13,13 @@ Subject to the following constraints and parameters:
 - There is no penalty for the number of times the fridge turns on or off.
 
 ## Run the simulation
+
+Python Dependencies:
+- pandas
+- numpy
+- PuLP
+- matplotlib
+
 From the top-level directory:
 ```bash
 python3 refrigerator-sim.py

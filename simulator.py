@@ -177,7 +177,7 @@ class Simulator:
             model += temp_variables[i + 1] >= 33
             model += temp_variables[i + 1] <= 43
         model += temp_variables[0] == self.fridge.current_temp  # starting temp of fridge
-        print(model)
+        #print(model)
 
         model.solve()
         #model.solve(PULP_CBC_CMD())
@@ -219,9 +219,9 @@ class Simulator:
             # update historicals dictionary and dataframe row
             self.update_historical_avgs(timestep)
 
-        print("HISTORICALS: ", self.historicals)
-        print(self.data.head()['hist_avg_moer_at_time'])
-        print(self.data.head()['num_datapoints_in_avg'])
+        #print("HISTORICALS: ", self.historicals)
+        #print(self.data.head()['hist_avg_moer_at_time'])
+        #print(self.data.head()['num_datapoints_in_avg'])
 
         self.outfile.close()
         self.visualizer.plot(output_filename, show_plot)
