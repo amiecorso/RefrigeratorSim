@@ -5,6 +5,7 @@ from refrigerator import Refrigerator
 class Simulator:
     def __init__(self, moer_data, path_to_output):
         self.fridge = Refrigerator()
+        self.historicals = {}
         self.timestep = 5
         self.lookahead_window = int(60 / self.timestep)
         self.current_time = 0
@@ -29,6 +30,15 @@ class Simulator:
             time_part = timestamp.split(" ")[1]
             return "".join(time_part.split(":")[:2])
         self.data['timeslotID'] = self.data['timestamp'].apply(process_timestamp)
+
+    def update_historicals(self, moer, timeslotID):
+        new_avg = moer
+        count = 0
+        if timeslotID in self.historicals:
+            avg = self.historicals[timeslotID][0]
+            count = self.historicals[timeslotID][1]
+            new_avg = (count * avg + moer) / (count + 1)
+        self.historicals[timeslotID] = (new_avg, count + 1)
 
     def generate_output_row(self, moer):
         lbs_co2 = self.lbs_co2_produced_this_timestep(moer)
@@ -55,6 +65,7 @@ class Simulator:
                 self.fridge.turn_on()
 
             moer = self.data.iloc[timestep]["MOER"]
+            timeslotID = self.data.iloc[timestep]["timeslotID"]
             #print("moer: ", moer)
 
             # write row for timestep
@@ -64,6 +75,10 @@ class Simulator:
             self.current_time += self.timestep
             self.fridge.current_timestamp = self.current_time
 
+            ## update historical entry
+            self.update_historicals(moer, timeslotID)
+
+        #print("HISTORICALS: ", self.historicals)
         self.outfile.close()
 
     def run_simulation_with_forecast(self):
