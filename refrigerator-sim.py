@@ -12,5 +12,5 @@ sim_moer_data = all_moer_data[288:-1].reset_index(drop=True)
 simulator = Simulator(sim_moer_data, path_to_sim_output)
 visualizer = Visualizer(simulator)
 
-simulator.run_simulation()
+simulator.run_simulation_with_data()
 visualizer.plot()
