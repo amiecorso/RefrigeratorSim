@@ -83,14 +83,14 @@ class Simulator:
         co2_vector = self.data['lbs_co2'][start_timestep : start_timestep + num_timesteps]
 
         variable_suffixes = [str(i) for i in range(co2_vector.size)]
-        print("Variable Indices:", variable_suffixes)
+        #print("Variable Indices:", variable_suffixes)
         decision_variables = LpVariable.matrix("status", variable_suffixes, cat="Binary")
         status_vector = np.array(decision_variables)
-        print("Decision Variables: ")
-        print(status_vector)
+        #print("Decision Variables: ")
+        #print(status_vector)
 
         obj_func = lpSum(status_vector * co2_vector)
-        print(obj_func)
+        #print(obj_func)
         model += obj_func
 
         temp_variables = LpVariable.matrix("temp", variable_suffixes, cat="Continuous")
@@ -103,16 +103,17 @@ class Simulator:
             model += temp_variables[i + 1] >= 33
             model += temp_variables[i + 1] <= 43
         model += temp_variables[0] == self.fridge.current_temp  # starting temp of fridge
-        print(model)
+        #print(model)
 
         model.solve()
         #model.solve(PULP_CBC_CMD())
 
-        status = LpStatus[model.status]
-        print(status)
+        #status = LpStatus[model.status]
+        #print(status)
 
         # Decision Variables
-        print("status_0 value: ", model.variablesDict()['status_0'].value())
+        #print("status_0 value: ", model.variablesDict()['status_0'].value())
+        '''
         for v in model.variables():
             try:
                 print(v.name, "=", v.value())
@@ -120,5 +121,5 @@ class Simulator:
                 print("error couldnt find value")
 
         print("Total Cost:", model.objective.value())
-
+        '''
         return model.variablesDict()['status_0'].value()
