@@ -1,19 +1,18 @@
 from pulp import *
-import pandas as pd
 import numpy as np
 from refrigerator import Refrigerator
 
 class Simulator:
     def __init__(self, moer_data, path_to_output):
         self.fridge = Refrigerator()
-        self.number_timesteps_to_process = 300
         self.timestep = 5
         self.lookahead_window = int(60 / self.timestep)
         self.current_time = 0
         self.path_to_output = path_to_output
         self.outfile = open(path_to_output, 'w')
         self.data = moer_data
-
+        #self.number_timesteps_to_process = self.data.shape[0]  # ALL data
+        self.number_timesteps_to_process = 100
         self.add_fridge_co2_to_dataframe()
 
     def add_fridge_co2_to_dataframe(self):
@@ -37,6 +36,7 @@ class Simulator:
         return round(moer * (self.fridge.wattage * megawatts_per_watt) * (self.timestep * hours_per_minute), 8)
 
     def run_simulation_without_data(self):
+        self.fridge = Refrigerator()
         self.outfile.write("time,fridge_temp,fridge_on,moer,lbs_co2\n")  # write CSV headers
 
         for timestep in self.data.head(self.number_timesteps_to_process).index:
@@ -59,6 +59,7 @@ class Simulator:
         self.outfile.close()
 
     def run_simulation_with_data(self):
+        self.fridge = Refrigerator()
         self.outfile.write("time,fridge_temp,fridge_on,moer,lbs_co2\n")  # write CSV headers
         for timestep in self.data.head(self.number_timesteps_to_process).index:
             decision = self.get_next_decision(timestep, self.lookahead_window)

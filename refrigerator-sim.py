@@ -14,3 +14,6 @@ visualizer = Visualizer(simulator)
 
 simulator.run_simulation_with_data()
 visualizer.plot()
+
+#simulator.run_simulation_without_data()
+#visualizer.plot()
