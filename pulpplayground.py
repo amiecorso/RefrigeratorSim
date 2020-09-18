@@ -2,7 +2,7 @@ from pulp import *
 import pandas as pd
 import numpy as np
 
-path_to_moer_data = "MOER_Data/MOERS.csv"
+path_to_moer_data = "MOER_data/MOERS.csv"
 
 all_moer_data = pd.read_csv(path_to_moer_data)
 initial_historical_data = all_moer_data[:288]
