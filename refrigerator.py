@@ -7,7 +7,7 @@ class Refrigerator:
         self.current_timestamp = 0  # minutes
         self.warming_rate = 5/60  # degrees/minute
         self.cooling_rate = -10/60  # degrees/minute
-        self.wattage = 200
+        self.wattage = 200  # watts
 
     def current_rate_temp_change(self):
         if self.on:

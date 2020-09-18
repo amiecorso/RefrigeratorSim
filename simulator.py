@@ -12,15 +12,23 @@ class Simulator:
         self.outfile = open(path_to_output, 'w')
         self.data = moer_data
         #self.number_timesteps_to_process = self.data.shape[0]  # ALL data
-        self.number_timesteps_to_process = 100
+        self.number_timesteps_to_process = 300
         self.add_fridge_co2_to_dataframe()
+        self.add_timeslotIDs_to_dataframe()
+        print(self.data.head(10))
 
     def add_fridge_co2_to_dataframe(self):
-        def lbs_co2_if_fridge_on(moer):
-            megawatts_per_watt = 1 / 1000000
-            hours_per_minute = 1 / 60
-            return round(moer * (self.fridge.wattage * megawatts_per_watt) * (self.timestep * hours_per_minute), 8)
-        self.data['lbs_co2'] = self.data['MOER'].apply(lbs_co2_if_fridge_on)
+        megawatts_per_watt = 1 / 1000000
+        hours_per_minute = 1 / 60
+        self.data['lbs_co2'] = self.data['MOER'].apply(
+            lambda moer: moer * (self.fridge.wattage * megawatts_per_watt) * (self.timestep * hours_per_minute)
+        )
+
+    def add_timeslotIDs_to_dataframe(self):
+        def process_timestamp(timestamp):
+            time_part = timestamp.split(" ")[1]
+            return "".join(time_part.split(":")[:2])
+        self.data['timeslotID'] = self.data['timestamp'].apply(process_timestamp)
 
     def generate_output_row(self, moer):
         lbs_co2 = self.lbs_co2_produced_this_timestep(moer)
@@ -58,7 +66,7 @@ class Simulator:
 
         self.outfile.close()
 
-    def run_simulation_with_data(self):
+    def run_simulation_with_forecast(self):
         self.fridge = Refrigerator()
         self.outfile.write("time,fridge_temp,fridge_on,moer,lbs_co2\n")  # write CSV headers
         for timestep in self.data.head(self.number_timesteps_to_process).index:
@@ -124,3 +132,23 @@ class Simulator:
         print("Total Cost:", model.objective.value())
         '''
         return model.variablesDict()['status_0'].value()
+
+    def run_simulation_with_historicals(self):
+        self.fridge = Refrigerator()
+        self.outfile.write("time,fridge_temp,fridge_on,moer,lbs_co2\n")  # write CSV headers
+        for timestep in self.data.head(self.number_timesteps_to_process).index:
+            decision = self.get_next_decision(timestep, self.lookahead_window)
+            if decision == 0:
+                self.fridge.turn_off()
+            else:
+                self.fridge.turn_on()
+
+            # write row for timestep
+            moer = self.data.iloc[timestep]["MOER"]
+            self.outfile.write(self.generate_output_row(moer))
+
+            # update variables
+            self.fridge.current_temp = self.fridge.expected_temp(self.current_time + self.timestep)
+            self.current_time += self.timestep
+            self.fridge.current_timestamp = self.current_time
+        self.outfile.close()

@@ -56,4 +56,9 @@ class Visualizer:
         total_run_time = fridge_on_subset.shape[0] * self.simulator.timestep
         print("Total refrigerator run time: ", total_run_time, " mins")
         print("Total lbs CO2 emitted: ", cumulative_total)
+
+        axs[2].text(0.95, 0.01, 'Total lbs CO2 emitted: ' + str(round(cumulative_total, 4)),
+                verticalalignment='bottom', horizontalalignment='right',
+                transform=ax.transAxes,
+                color='green', fontsize=15)
         plt.show()
