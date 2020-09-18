@@ -16,10 +16,12 @@ initial_historical_data = all_moer_data[:288]
 sim_moer_data = all_moer_data[288:-1].reset_index(drop=True)
 
 # number of timesteps (data rows) to process (smaller for testing speed)
-num_timesteps = 400
+num_timesteps = 5000
 
 simulator = Simulator(sim_moer_data, output_dir, num_timesteps)
 
-simulator.run_simulation_without_data(show_plot=False)
-simulator.run_simulation_with_forecast()
+if __name__ == '__main__':
+    simulator.run_simulation_without_data(show_plot=False)
+    simulator.run_simulation_with_forecast(show_plot=False)
+    simulator.run_simulation_with_forecast_and_historicals()
 

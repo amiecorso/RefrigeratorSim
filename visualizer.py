@@ -67,3 +67,19 @@ class Visualizer:
         if show_plot:
             plt.show()
         return
+
+    def plot_avg_moers(self, path_to_data, show_plot):
+        data = pd.read_csv(path_to_data)
+
+        fig, ax = plt.subplots()
+        # plot avg moers
+        ax.set_ylabel('AVG MOER \n(lbs CO2 / Mwh)', rotation=0, labelpad=42)
+        ax.plot(data["time"], data["avg_moer_at_time"])
+        fig.set_size_inches(8, 5)
+        fig.suptitle("Average Historical MOER: Granularity = " + self.simulator.avgs_granularity.capitalize())
+        fig.tight_layout()
+        fig.savefig(self.simulator.output_dir.rstrip('/') + '/' + 'avgMOERs_' +
+                    self.simulator.avgs_granularity + "_granularity.pdf")
+        if show_plot:
+            plt.show()
+        return
