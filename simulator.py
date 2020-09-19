@@ -88,75 +88,30 @@ class Simulator:
             return 0
         return self.lbs_co2_from_moer(moer)
 
-    def get_next_decision(self, start_timestep):
+    def get_next_decision(self, start_timestep, use_historicals=False):
         model = LpProblem("CO2_Minimization_Problem", LpMinimize)
-
         co2_vector = self.data['lbs_co2'][start_timestep: start_timestep + self.lookahead_window]
 
-        variable_suffixes = [str(i) for i in range(co2_vector.size)]
-        # print("Variable Indices:", variable_suffixes)
-        decision_variables = LpVariable.matrix("status", variable_suffixes, cat="Binary")
-        status_vector = np.array(decision_variables)
-        # print("Decision Variables: ")
-        # print(status_vector)
+        if use_historicals:
+            # how much historical average data should be used?
+            # - no more than an hour?  two hours?
+            # - the refrigerator can last for a maximum of two hours in the off position if it starts at 33 degrees...
+            # - so insight beyond two hours could be useful, but probably not a whole lot more than that.
+            # One hour corresponds to 12 timestamps
+            # by the end of the simulation, we'll have ~ (1440 mins per day / 5 mins per timesteps) = 288 timesteps per day
+            # 9000 timesteps / 288 timesteps per day = ~31 datapoints per historical average by end of sim
+            # so maybe the hist-avg lookahead length can be proportional in timesteps to the number of values used in the average...
+            # shorter as we have less info, longer as we get more info, eventually extending to 31 timesteps or 2.6 hours past the
+            # official lookahead window
+            if self.avgs_granularity == "timestep":
+                hist_lookahead_window = max(self.data['num_datapoints_in_avg'][start_timestep], 4)
+            elif self.avgs_granularity == "hour":
+                hist_lookahead_window = int(self.data['num_datapoints_in_avg'][start_timestep] / 12)  # timesteps/hour
 
-        obj_func = lpSum(status_vector * co2_vector)
-        # print(obj_func)
-        model += obj_func
-
-        temp_variables = LpVariable.matrix("temp", variable_suffixes, cat="Continuous")
-
-        for i in range(co2_vector.size - 1):
-            model += temp_variables[i + 1] == temp_variables[i] + \
-                     self.fridge.cooling_rate * self.timestep * status_vector[i] + \
-                     self.fridge.warming_rate * self.timestep * (1 - status_vector[i])
-            model += temp_variables[i + 1] >= 33
-            model += temp_variables[i + 1] <= 43
-        model += temp_variables[0] == self.fridge.current_temp  # starting temp of fridge
-        # print(model)
-
-        model.solve()
-        # model.solve(PULP_CBC_CMD())
-
-        # status = LpStatus[model.status]
-        # print(status)
-
-        # Decision Variables
-        # print("status_0 value: ", model.variablesDict()['status_0'].value())
-        '''
-        for v in model.variables():
-            try:
-                print(v.name, "=", v.value())
-            except:
-                print("error couldnt find value")
-
-        print("Total Cost:", model.objective.value())
-        '''
-        return model.variablesDict()['status_0'].value()
-
-    def get_next_decision_using_historicals(self, start_timestep):
-        model = LpProblem("CO2_Minimization_Problem", LpMinimize)
-
-        # how much historical average data should be used?
-        # - no more than an hour?  two hours?
-        # - the refrigerator can last for a maximum of two hours in the off position if it starts at 33 degrees...
-        # - so insight beyond two hours could be useful, but probably not a whole lot more than that.
-        # One hour corresponds to 12 timestamps
-        # by the end of the simulation, we'll have ~ (1440 mins per day / 5 mins per timesteps) = 288 timesteps per day
-        # 9000 timesteps / 288 timesteps per day = ~31 datapoints per historical average by end of sim
-        # so maybe the hist-avg lookahead length can be proportional in timesteps to the number of values used in the average...
-        # shorter as we have less info, longer as we get more info, eventually extending to 31 timesteps or 2.6 hours past the
-        # official lookahead window
-        if self.avgs_granularity == "timestep":
-            hist_lookahead_window = max(self.data['num_datapoints_in_avg'][start_timestep], 4)
-        elif self.avgs_granularity == "hour":
-            hist_lookahead_window = int(self.data['num_datapoints_in_avg'][start_timestep] / 12)  # timesteps/hour
-
-        co2_vector_forecast = self.data['lbs_co2'][start_timestep: start_timestep + self.lookahead_window]
-        moer_vector_hist_avg = self.data['hist_avg_moer_at_time'][start_timestep + self.lookahead_window:
+            moer_vector_hist_avg = self.data['hist_avg_moer_at_time'][start_timestep + self.lookahead_window:
                                                                   start_timestep + self.lookahead_window + hist_lookahead_window]
-        #co2_vector_hist_avg = moer_vector_hist_avg.apply(self.lbs_co2_from_moer)
-        co2_vector = co2_vector_forecast  # .append(co2_vector_hist_avg)
+            co2_vector_hist_avg = moer_vector_hist_avg.apply(self.lbs_co2_from_moer)
+            co2_vector = co2_vector.append(co2_vector_hist_avg)
 
         variable_suffixes = [str(i) for i in range(co2_vector.size)]
         # print("Variable Indices:", variable_suffixes)
@@ -188,15 +143,7 @@ class Simulator:
 
         # Decision Variables
         # print("status_0 value: ", model.variablesDict()['status_0'].value())
-        '''
-        for v in model.variables():
-            try:
-                print(v.name, "=", v.value())
-            except:
-                print("error couldnt find value")
 
-        print("Total Cost:", model.objective.value())
-        '''
         return model.variablesDict()['status_0'].value()
 
     def run_simulation_without_data(self, show_plot=True):
@@ -233,7 +180,7 @@ class Simulator:
         output_filename = self.prepare_new_simulation("with_forecasting")
 
         for timestep in self.data.head(self.number_timesteps_to_process).index:
-            decision = self.get_next_decision(timestep)
+            decision = self.get_next_decision(timestep)  # <-- all the action
             if decision == 0:
                 self.fridge.turn_off()
             else:
@@ -258,7 +205,7 @@ class Simulator:
         output_filename = self.prepare_new_simulation("with_forecasting_and_historicals")
 
         for timestep in self.data.head(self.number_timesteps_to_process).index:
-            decision = self.get_next_decision_using_historicals(timestep)
+            decision = self.get_next_decision(timestep, use_historicals=True)  #<-- all the action
             if decision == 0:
                 self.fridge.turn_off()
             else:
