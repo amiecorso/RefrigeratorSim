@@ -14,6 +14,8 @@ def parse_args():
                         help='Run model using 1-hr forecast window.')
     parser.add_argument('--forecast_and_history', action='store_true', default=False,
                         help='Run model using 1-hr forecast and historical avgs.')
+    parser.add_argument('--moer_avgs', action='store_true', default=False,
+                        help='Produce plot of average MOER data.')
     parser.add_argument('--data_path', action='store', default='MOER_data/MOERS.csv', help='Path to dataset.')
     parser.add_argument('--timesteps', action='store', default='all',
                         help='The number of timesteps to run for this simulation, defaults to size of dataset.')
@@ -56,17 +58,22 @@ if __name__ == '__main__':
     if not args.no_data and not args.forecast_only and not args.forecast_and_history:
         args.forecast_and_history = True
 
+    if args.moer_avgs:
+        simulator.plot_moer_avgs()
+        exit(1)
+
     if args.no_data or args.all:
         start_time = time.time()
-        simulator.run_simulation_without_data(show_plot=False)
+        simulator.run_simulation_without_data()
         end_timer(start_time, 'no_data')
 
     if args.forecast_only or args.all:
         start_time = time.time()
-        simulator.run_simulation_with_forecast(show_plot=False)
+        simulator.run_simulation_with_forecast()
         end_timer(start_time, 'forecast_only')
 
     if args.forecast_and_history or args.all:
         start_time = time.time()
-        simulator.run_simulation_with_forecast_and_historicals(show_plot=False)
+        simulator.run_simulation_with_forecast_and_historicals()
         end_timer(start_time, 'forecast_and_history')
+

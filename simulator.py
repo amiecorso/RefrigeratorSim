@@ -10,13 +10,12 @@ class Simulator:
         self.fridge = Refrigerator()
         self.historicals = {}
         self.timestep = 5
-        self.lookahead_window = 16  # int(60 / self.timestep)  # timesteps in one hour
+        self.lookahead_window = int(60 / self.timestep)  # timesteps in one hour
         self.avgs_granularity = "timestep"
         # self.avgs_granularity = "hour"
         self.current_time = 0
         self.output_dir = output_dir
         self.data = moer_data
-        # self.number_timesteps_to_process = self.data.shape[0]  # ALL data
         self.number_timesteps_to_process = num_timesteps
         self.add_synthetic_fields_to_dataframe()
         self.data = self.data[:self.number_timesteps_to_process]
@@ -47,7 +46,7 @@ class Simulator:
         output_filename = self.output_dir.rstrip("/") + "/" + "sim_output_" + sim_id + ".csv"
         self.outfile = open(output_filename, 'w')
         # write CSV headers
-        self.outfile.write("time,fridge_temp,fridge_on,moer,lbs_co2,avg_moer_at_time,datapoints_in_avg\n")
+        self.outfile.write("time,fridge_temp,fridge_on,moer,lbs_co2,avg_moer_at_time\n")
         return output_filename
 
     def update_historical_avgs(self, timestep):
@@ -63,7 +62,7 @@ class Simulator:
         # Update running average for this time of day
         self.historicals[timeslotID] = (avg, count)
         # Update this timestep with new historical information
-        self.data.loc[self.data.timeslotID == timeslotID, 'hist_avg_moer_at_time'] = avg
+        self.data.iloc[timestep:].loc[self.data.timeslotID == timeslotID, 'hist_avg_moer_at_time'] = avg
         self.data.loc[self.data.timeslotID == timeslotID, 'num_datapoints_in_avg'] = count
         return
 
@@ -71,10 +70,9 @@ class Simulator:
         moer = data_row['MOER']
         lbs_co2 = self.lbs_co2_produced_this_timestep(moer)
         hist_avg_moer = data_row['hist_avg_moer_at_time']
-        num_datapoints = data_row['num_datapoints_in_avg']
 
         row_data = [self.current_time, round(self.fridge.current_temp, 2), self.fridge.on, moer, lbs_co2,
-                    hist_avg_moer, num_datapoints]
+                    hist_avg_moer]
         str_row_data = [str(field) for field in row_data]
         return ",".join(str_row_data) + "\n"
 
@@ -103,10 +101,15 @@ class Simulator:
             # so maybe the hist-avg lookahead length can be proportional in timesteps to the number of values used in the average...
             # shorter as we have less info, longer as we get more info, eventually extending to 31 timesteps or 2.6 hours past the
             # official lookahead window
+            timeslotID = self.data['timeslotID'][start_timestep]
+            if timeslotID in self.historicals:
+                num_datapoints_in_avg = self.historicals[timeslotID][1]
+            else:
+                num_datapoints_in_avg = 0
             if self.avgs_granularity == "timestep":
-                hist_lookahead_window = max(self.data['num_datapoints_in_avg'][start_timestep], 4)
+                hist_lookahead_window = max(num_datapoints_in_avg, 4) # computationally feasible
             elif self.avgs_granularity == "hour":
-                hist_lookahead_window = int(self.data['num_datapoints_in_avg'][start_timestep] / 12)  # timesteps/hour
+                hist_lookahead_window = int(num_datapoints_in_avg / 12)  # timesteps/hour
 
             moer_vector_hist_avg = self.data['hist_avg_moer_at_time'][start_timestep + self.lookahead_window:
                                                                   start_timestep + self.lookahead_window + hist_lookahead_window]
@@ -146,7 +149,7 @@ class Simulator:
 
         return model.variablesDict()['status_0'].value()
 
-    def run_simulation_without_data(self, show_plot=True):
+    def run_simulation_without_data(self, suppress_plot=False):
         output_filename = self.prepare_new_simulation("no_forecasting")
 
         for timestep in self.data.head(self.number_timesteps_to_process).index:
@@ -164,7 +167,7 @@ class Simulator:
             self.current_time += self.timestep
             self.fridge.current_timestamp = self.current_time
 
-            # update historicals dictionary and dataframe row
+            # update historicals dictionary and dataframe row (need this for moer avgs)
             self.update_historical_avgs(timestep)
 
         # print("HISTORICALS: ", self.historicals)
@@ -172,11 +175,11 @@ class Simulator:
         # print(self.data.head()['num_datapoints_in_avg'])
 
         self.outfile.close()
-        self.visualizer.plot(output_filename, show_plot)
-        self.visualizer.plot_avg_moers(output_filename, show_plot)
-        return
+        if not suppress_plot:
+            self.visualizer.plot(output_filename)
+        return output_filename
 
-    def run_simulation_with_forecast(self, show_plot=True):
+    def run_simulation_with_forecast(self):
         output_filename = self.prepare_new_simulation("with_forecasting")
 
         for timestep in self.data.head(self.number_timesteps_to_process).index:
@@ -195,13 +198,13 @@ class Simulator:
             self.fridge.current_timestamp = self.current_time
 
             # update historicals dictionary and dataframe row
-            # self.update_historical_avgs(timestep)
+            self.update_historical_avgs(timestep)
 
         self.outfile.close()
-        self.visualizer.plot(output_filename, show_plot)
+        self.visualizer.plot(output_filename)
         return
 
-    def run_simulation_with_forecast_and_historicals(self, show_plot=True):
+    def run_simulation_with_forecast_and_historicals(self):
         output_filename = self.prepare_new_simulation("with_forecasting_and_historicals")
 
         for timestep in self.data.head(self.number_timesteps_to_process).index:
@@ -223,5 +226,9 @@ class Simulator:
             self.update_historical_avgs(timestep)
 
         self.outfile.close()
-        self.visualizer.plot(output_filename, show_plot)
+        self.visualizer.plot(output_filename)
         return
+
+    def plot_moer_avgs(self):
+        output_filename = self.run_simulation_without_data(suppress_plot=True)
+        self.visualizer.plot_avg_moers(output_filename)

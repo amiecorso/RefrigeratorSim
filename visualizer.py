@@ -7,7 +7,7 @@ class Visualizer:
     def __init__(self, simulator):
         self.simulator = simulator
 
-    def plot(self, path_to_data, show_plot):
+    def plot(self, path_to_data):
         data = pd.read_csv(path_to_data)
         sim_id = path_to_data.lstrip(self.simulator.output_dir).rstrip('.csv').lstrip('/').lstrip('sim_output_')
 
@@ -65,11 +65,9 @@ class Visualizer:
                     color='green', fontsize=15)
 
         fig.savefig(self.simulator.output_dir.rstrip('/') + '/' + 'plots_' + sim_id + ".pdf")
-        if show_plot:
-            plt.show()
         return
 
-    def plot_avg_moers(self, path_to_data, show_plot):
+    def plot_avg_moers(self, path_to_data):
         data = pd.read_csv(path_to_data)
 
         fig, ax = plt.subplots()
@@ -81,6 +79,4 @@ class Visualizer:
         fig.tight_layout()
         fig.savefig(self.simulator.output_dir.rstrip('/') + '/' + 'avgMOERs_' +
                     self.simulator.avgs_granularity + "_granularity.pdf")
-        if show_plot:
-            plt.show()
         return
