@@ -37,7 +37,7 @@ The plot displays:
 At a high level, the model chooses what to do (turn the fridge on or off) at each timestep by formulating the one-hour
 forecast window as a linear programming problem and finding an optimal solution within the forecast window.  The first 
 step of this optimal solution is then taken, at which time the simulation (and forecast horizon) has advanced one step.
-The process is repeated with the new forecast. 
+The process is repeated with the new forecast. The PuLP module is used to solve the LP problem.
 
 Objective function to minimize:
 

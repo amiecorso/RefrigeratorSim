@@ -3,19 +3,20 @@ import numpy as np
 from refrigerator import Refrigerator
 from visualizer import Visualizer
 
+
 class Simulator:
     def __init__(self, moer_data, output_dir, num_timesteps):
         self.visualizer = Visualizer(self)
         self.fridge = Refrigerator()
         self.historicals = {}
         self.timestep = 5
-        self.lookahead_window = int(60 / self.timestep)
+        self.lookahead_window = 16  # int(60 / self.timestep)  # timesteps in one hour
         self.avgs_granularity = "timestep"
-        #self.avgs_granularity = "hour"
+        # self.avgs_granularity = "hour"
         self.current_time = 0
         self.output_dir = output_dir
         self.data = moer_data
-        #self.number_timesteps_to_process = self.data.shape[0]  # ALL data
+        # self.number_timesteps_to_process = self.data.shape[0]  # ALL data
         self.number_timesteps_to_process = num_timesteps
         self.add_synthetic_fields_to_dataframe()
         self.data = self.data[:self.number_timesteps_to_process]
@@ -87,20 +88,20 @@ class Simulator:
             return 0
         return self.lbs_co2_from_moer(moer)
 
-    def get_next_decision(self, start_timestep, num_timesteps):
+    def get_next_decision(self, start_timestep):
         model = LpProblem("CO2_Minimization_Problem", LpMinimize)
 
-        co2_vector = self.data['lbs_co2'][start_timestep : start_timestep + num_timesteps]
+        co2_vector = self.data['lbs_co2'][start_timestep: start_timestep + self.lookahead_window]
 
         variable_suffixes = [str(i) for i in range(co2_vector.size)]
-        #print("Variable Indices:", variable_suffixes)
+        # print("Variable Indices:", variable_suffixes)
         decision_variables = LpVariable.matrix("status", variable_suffixes, cat="Binary")
         status_vector = np.array(decision_variables)
-        #print("Decision Variables: ")
-        #print(status_vector)
+        # print("Decision Variables: ")
+        # print(status_vector)
 
         obj_func = lpSum(status_vector * co2_vector)
-        #print(obj_func)
+        # print(obj_func)
         model += obj_func
 
         temp_variables = LpVariable.matrix("temp", variable_suffixes, cat="Continuous")
@@ -112,16 +113,16 @@ class Simulator:
             model += temp_variables[i + 1] >= 33
             model += temp_variables[i + 1] <= 43
         model += temp_variables[0] == self.fridge.current_temp  # starting temp of fridge
-        #print(model)
+        # print(model)
 
         model.solve()
-        #model.solve(PULP_CBC_CMD())
+        # model.solve(PULP_CBC_CMD())
 
-        #status = LpStatus[model.status]
-        #print(status)
+        # status = LpStatus[model.status]
+        # print(status)
 
         # Decision Variables
-        #print("status_0 value: ", model.variablesDict()['status_0'].value())
+        # print("status_0 value: ", model.variablesDict()['status_0'].value())
         '''
         for v in model.variables():
             try:
@@ -133,7 +134,7 @@ class Simulator:
         '''
         return model.variablesDict()['status_0'].value()
 
-    def get_next_decision_using_historicals(self, start_timestep, num_timesteps):
+    def get_next_decision_using_historicals(self, start_timestep):
         model = LpProblem("CO2_Minimization_Problem", LpMinimize)
 
         # how much historical average data should be used?
@@ -147,25 +148,25 @@ class Simulator:
         # shorter as we have less info, longer as we get more info, eventually extending to 31 timesteps or 2.6 hours past the
         # official lookahead window
         if self.avgs_granularity == "timestep":
-            hist_lookahead_window = self.data['num_datapoints_in_avg'][start_timestep]
+            hist_lookahead_window = max(self.data['num_datapoints_in_avg'][start_timestep], 4)
         elif self.avgs_granularity == "hour":
-            hist_lookahead_window = int(self.data['num_datapoints_in_avg'][start_timestep] / 12) # timesteps/hour
+            hist_lookahead_window = int(self.data['num_datapoints_in_avg'][start_timestep] / 12)  # timesteps/hour
 
-        co2_vector_forecast = self.data['lbs_co2'][start_timestep : start_timestep + num_timesteps]
-        moer_vector_hist_avg = self.data['hist_avg_moer_at_time'][start_timestep + num_timesteps :
-                                                                 start_timestep + num_timesteps + hist_lookahead_window]
-        co2_vector_hist_avg = moer_vector_hist_avg.apply(self.lbs_co2_from_moer)
-        co2_vector = co2_vector_forecast.append(co2_vector_hist_avg)
+        co2_vector_forecast = self.data['lbs_co2'][start_timestep: start_timestep + self.lookahead_window]
+        moer_vector_hist_avg = self.data['hist_avg_moer_at_time'][start_timestep + self.lookahead_window:
+                                                                  start_timestep + self.lookahead_window + hist_lookahead_window]
+        #co2_vector_hist_avg = moer_vector_hist_avg.apply(self.lbs_co2_from_moer)
+        co2_vector = co2_vector_forecast  # .append(co2_vector_hist_avg)
 
         variable_suffixes = [str(i) for i in range(co2_vector.size)]
-        #print("Variable Indices:", variable_suffixes)
+        # print("Variable Indices:", variable_suffixes)
         decision_variables = LpVariable.matrix("status", variable_suffixes, cat="Binary")
         status_vector = np.array(decision_variables)
-        #print("Decision Variables: ")
-        #print(status_vector)
+        # print("Decision Variables: ")
+        # print(status_vector)
 
         obj_func = lpSum(status_vector * co2_vector)
-        #print(obj_func)
+        # print(obj_func)
         model += obj_func
 
         temp_variables = LpVariable.matrix("temp", variable_suffixes, cat="Continuous")
@@ -177,16 +178,16 @@ class Simulator:
             model += temp_variables[i + 1] >= 33
             model += temp_variables[i + 1] <= 43
         model += temp_variables[0] == self.fridge.current_temp  # starting temp of fridge
-        #print(model)
+        # print(model)
 
         model.solve()
-        #model.solve(PULP_CBC_CMD())
+        # model.solve(PULP_CBC_CMD())
 
-        #status = LpStatus[model.status]
-        #print(status)
+        # status = LpStatus[model.status]
+        # print(status)
 
         # Decision Variables
-        #print("status_0 value: ", model.variablesDict()['status_0'].value())
+        # print("status_0 value: ", model.variablesDict()['status_0'].value())
         '''
         for v in model.variables():
             try:
@@ -219,9 +220,9 @@ class Simulator:
             # update historicals dictionary and dataframe row
             self.update_historical_avgs(timestep)
 
-        #print("HISTORICALS: ", self.historicals)
-        #print(self.data.head()['hist_avg_moer_at_time'])
-        #print(self.data.head()['num_datapoints_in_avg'])
+        # print("HISTORICALS: ", self.historicals)
+        # print(self.data.head()['hist_avg_moer_at_time'])
+        # print(self.data.head()['num_datapoints_in_avg'])
 
         self.outfile.close()
         self.visualizer.plot(output_filename, show_plot)
@@ -232,7 +233,7 @@ class Simulator:
         output_filename = self.prepare_new_simulation("with_forecasting")
 
         for timestep in self.data.head(self.number_timesteps_to_process).index:
-            decision = self.get_next_decision(timestep, self.lookahead_window)
+            decision = self.get_next_decision(timestep)
             if decision == 0:
                 self.fridge.turn_off()
             else:
@@ -247,7 +248,7 @@ class Simulator:
             self.fridge.current_timestamp = self.current_time
 
             # update historicals dictionary and dataframe row
-            self.update_historical_avgs(timestep)
+            # self.update_historical_avgs(timestep)
 
         self.outfile.close()
         self.visualizer.plot(output_filename, show_plot)
@@ -257,7 +258,7 @@ class Simulator:
         output_filename = self.prepare_new_simulation("with_forecasting_and_historicals")
 
         for timestep in self.data.head(self.number_timesteps_to_process).index:
-            decision = self.get_next_decision_using_historicals(timestep, self.lookahead_window)
+            decision = self.get_next_decision_using_historicals(timestep)
             if decision == 0:
                 self.fridge.turn_off()
             else:
