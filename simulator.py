@@ -6,12 +6,12 @@ from visualizer import Visualizer
 
 class Simulator:
     """ A simulator for modeling a simplified Automated Emissions Reduction (AER) algorithm applied to a smart plug.
-    See: https://www.watttime.org/aer/
+    See: https://www.watttime.org/aer/ for more about AER.
 
     Methods:
-        run_simulation_without_data()
-        run_simulation_with_forecast()
-        run_simulation_with_forecast_and_historicals()
+        run_without_data()
+        run_with_forecast()
+        run_with_forecast_and_historical()
     """
     def __init__(self, moer_data, output_dir, num_timesteps):
         """
@@ -33,7 +33,7 @@ class Simulator:
         self._add_synthetic_fields_to_dataframe()
         self.data = self.data[:self.number_timesteps_to_process]
 
-    def run_simulation_without_data(self, suppress_plot=False):
+    def run_without_data(self, suppress_plot=False):
         """ Runs the simulation using no MOER data.  Should result in a saw-shaped graph as the refrigerator merely
         warms until reaching maximum temperature, at which time it kicks on and cools to minimum temperature, repeat.
 
@@ -69,7 +69,7 @@ class Simulator:
             self.visualizer.plot(output_filename)
         return output_filename
 
-    def run_simulation_with_forecast(self):
+    def run_with_forecast(self):
         """ Perform a simulation that takes into account only the 1-hour forecast window to minimize CO2 emissions."""
         output_filename = self._prepare_new_simulation("with_forecasting")
 
@@ -95,7 +95,7 @@ class Simulator:
         self.visualizer.plot(output_filename)
         return
 
-    def run_simulation_with_forecast_and_historicals(self):
+    def run_with_forecast_and_historical(self):
         """ Perform a simulation that takes into account both the 1-hour forecast window of MOER data, as well as
         historical MOER data as the simulation progresses.
         """
@@ -125,7 +125,7 @@ class Simulator:
 
     def plot_moer_avgs(self):
         """ Generates a plot of the average MOER data for a given time of day, across duration of simulation."""
-        output_filename = self.run_simulation_without_data(suppress_plot=True)
+        output_filename = self.run_without_data(suppress_plot=True)
         self.visualizer.plot_avg_moers(output_filename)
         return
 

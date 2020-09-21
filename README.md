@@ -22,7 +22,12 @@ Python Dependencies:
 
 From the top-level directory:
 ```bash
-python3 refrigerator-sim.py
+python3 refrigerator_sim.py
+```
+
+For additional command line options:
+```bash
+python3 refrigerator_sim.py --help
 ```
 
 The simulation will take several minutes to complete.

@@ -7,6 +7,7 @@ from simulator import Simulator
 
 
 def parse_args():
+    """ Parses command line arguments """
     parser = argparse.ArgumentParser()
     parser.add_argument('--all', action='store_true', default=False, help='Run all three models.')
     parser.add_argument('--no_data', action='store_true', default=False, help='Run model using no data.')
@@ -25,6 +26,11 @@ def parse_args():
 
 
 def end_timer(start_time, sim_id):
+    """ Prints a formatted message indicating time elapsed since start_time for the simulation identified by sim_id.
+
+    :param start_time: simulation start time, in seconds
+    :param sim_id: a human-readable string identifying the simulation being timed
+    """
     end_time = time.time()
     total_seconds = round(end_time - start_time, 2)
     minutes = int(total_seconds // 60)
@@ -54,7 +60,8 @@ if __name__ == '__main__':
         args.timesteps = int(args.timesteps)
     simulator = Simulator(sim_moer_data, output_dir, args.timesteps)
 
-    # Run simulations
+    # Run simulations based on arguments supplied at command line.
+    # No args defaults to run_with_forecast_and_historical.
     if not args.no_data and not args.forecast_only and not args.forecast_and_history:
         args.forecast_and_history = True
 
@@ -64,16 +71,16 @@ if __name__ == '__main__':
 
     if args.no_data or args.all:
         start_time = time.time()
-        simulator.run_simulation_without_data()
+        simulator.run_without_data()
         end_timer(start_time, 'no_data')
 
     if args.forecast_only or args.all:
         start_time = time.time()
-        simulator.run_simulation_with_forecast()
+        simulator.run_with_forecast()
         end_timer(start_time, 'forecast_only')
 
     if args.forecast_and_history or args.all:
         start_time = time.time()
-        simulator.run_simulation_with_forecast_and_historicals()
+        simulator.run_with_forecast_and_historical()
         end_timer(start_time, 'forecast_and_history')
 
