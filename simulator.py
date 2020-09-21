@@ -51,7 +51,7 @@ class Simulator:
 
             # write csv row for this timestep
             data_row = self.data.iloc[timestep]
-            self.outfile.write(self._generate_output_row(data_row))
+            self._generate_output_row(data_row)
 
             self.fridge.current_temp = self.fridge.expected_temp(self.current_time + self.timestep)
             self.current_time += self.timestep
@@ -82,7 +82,7 @@ class Simulator:
 
             # write csv row for this timestep
             data_row = self.data.iloc[timestep]
-            self.outfile.write(self._generate_output_row(data_row))
+            self._generate_output_row(data_row)
 
             self.fridge.current_temp = self.fridge.expected_temp(self.current_time + self.timestep)
             self.current_time += self.timestep
