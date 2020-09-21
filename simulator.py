@@ -1,6 +1,7 @@
 from pulp import *
 import numpy as np
 import pandas as pd
+import time
 from refrigerator import Refrigerator
 from visualizer import Visualizer
 
@@ -41,6 +42,7 @@ class Simulator:
         :param suppress_plot: Whether or not to suppres production of a matpotlib plot, defaults to False.
         :return: The name of the data output file, for consumption by method Simulator.plot_moer_avgs.
         """
+        start_time = time.time()
         output_filename = self._prepare_new_simulation("no_forecasting")
         print("Running simulation (no data)...")
 
@@ -66,12 +68,15 @@ class Simulator:
         # print(self.data.head()['hist_avg_moer_at_time'])
 
         self.outfile.close()
+        self._end_timer(start_time, 'no_data')
+        print("\nGenerating matplotlib plots (~30s)...")
         if not suppress_plot:
             self.visualizer.plot(output_filename)
         return output_filename
 
     def run_with_forecast(self):
         """ Perform a simulation that takes into account only the 1-hour forecast window to minimize CO2 emissions."""
+        start_time = time.time()
         output_filename = self._prepare_new_simulation("with_forecasting")
         print("Running simulation (forecast only)...")
 
@@ -94,6 +99,8 @@ class Simulator:
             self._update_historical_avgs(timestep)
 
         self.outfile.close()
+        self._end_timer(start_time, 'forecast_only')
+        print("\nGenerating matplotlib plots (~30s)...")
         self.visualizer.plot(output_filename)
         return
 
@@ -101,6 +108,7 @@ class Simulator:
         """ Perform a simulation that takes into account both the 1-hour forecast window of MOER data, as well as
         historical MOER data as the simulation progresses.
         """
+        start_time = time.time()
         output_filename = self._prepare_new_simulation("with_forecasting_and_historicals")
         print("Running simulation (forecast and historical)...")
 
@@ -123,6 +131,8 @@ class Simulator:
             self._update_historical_avgs(timestep)
 
         self.outfile.close()
+        self._end_timer(start_time, 'forecast_and_historical')
+        print("\nGenerating matplotlib plots (~30s)...")
         self.visualizer.plot(output_filename)
         return
 
@@ -161,7 +171,7 @@ class Simulator:
                 num_datapoints_in_avg = self.historicals[timeslotID][1]
             else:
                 num_datapoints_in_avg = 0
-            hist_lookahead_window = min(num_datapoints_in_avg, 4)  # computationally feasible
+            hist_lookahead_window = min(num_datapoints_in_avg, 8)  # computationally feasible
 
             moer_vector_hist_avg = np.array(self.data['hist_avg_moer_at_time']
                                             [start_timestep + self.lookahead_window:
@@ -272,3 +282,15 @@ class Simulator:
         megawatts_per_watt = 1 / 1000000
         hours_per_minute = 1 / 60
         return round(moer * (self.fridge.wattage * megawatts_per_watt) * (self.size_of_timestep * hours_per_minute), 8)
+
+    def _end_timer(self, start_time, sim_id):
+        """ Prints a formatted message indicating time elapsed since start_time for the simulation identified by sim_id.
+
+        :param start_time: simulation start time, in seconds
+        :param sim_id: a human-readable string identifying the simulation being timed
+        """
+        end_time = time.time()
+        total_seconds = round(end_time - start_time, 2)
+        minutes = int(total_seconds // 60)
+        seconds = total_seconds % 60
+        print("Simulation '{}' duration: {} min {} sec".format(sim_id, minutes, seconds))

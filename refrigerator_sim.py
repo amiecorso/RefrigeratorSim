@@ -25,17 +25,6 @@ def parse_args():
     return parser.parse_args()
 
 
-def end_timer(start_time, sim_id):
-    """ Prints a formatted message indicating time elapsed since start_time for the simulation identified by sim_id.
-
-    :param start_time: simulation start time, in seconds
-    :param sim_id: a human-readable string identifying the simulation being timed
-    """
-    end_time = time.time()
-    total_seconds = round(end_time - start_time, 2)
-    minutes = int(total_seconds // 60)
-    seconds = total_seconds % 60
-    print("Simulation '{}' duration: {} min {} sec".format(sim_id, minutes, seconds))
 
 
 if __name__ == '__main__':
@@ -70,17 +59,11 @@ if __name__ == '__main__':
         exit(1)
 
     if args.no_data or args.all:
-        start_time = time.time()
         simulator.run_without_data()
-        end_timer(start_time, 'no_data')
 
     if args.forecast_only or args.all:
-        start_time = time.time()
         simulator.run_with_forecast()
-        end_timer(start_time, 'forecast_only')
 
     if args.forecast_and_history or args.all:
-        start_time = time.time()
         simulator.run_with_forecast_and_historical()
-        end_timer(start_time, 'forecast_and_history')
 
