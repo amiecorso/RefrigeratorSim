@@ -66,8 +66,7 @@ class Visualizer:
         fig.tight_layout()
 
         fridge_on_subset = data.loc[data['fridge_on'] == True]
-        #print(fridge_on_subset.head())
-        total_run_time = fridge_on_subset.shape[0] * self.simulator.timestep
+        total_run_time = fridge_on_subset.shape[0] * self.simulator.size_of_timestep
         print("=" * 50)
         print("Total refrigerator run time: ", total_run_time, " mins")
         print("Total lbs CO2 emitted: ", cumulative_total)
@@ -88,14 +87,11 @@ class Visualizer:
         :param path_to_data: the path to the csv file containing simulation data.
         """
         data = pd.read_csv(path_to_data)
-
         fig, ax = plt.subplots()
-        # plot avg moers
         ax.set_ylabel('AVG MOER \n(lbs CO2 / Mwh)', rotation=0, labelpad=42)
         ax.plot(data["time"], data["avg_moer_at_time"])
         fig.set_size_inches(8, 5)
-        fig.suptitle("Average Historical MOER: Granularity = " + self.simulator.avgs_granularity.capitalize())
+        fig.suptitle("Average Historical MOER: Granularity = timestep")
         fig.tight_layout()
-        fig.savefig(self.simulator.output_dir.rstrip('/') + '/' + 'avgMOERs_' +
-                    self.simulator.avgs_granularity + "_granularity.pdf")
+        fig.savefig(self.simulator.output_dir.rstrip('/') + '/' + 'avgMOERs_timestep_granularity.pdf')
         return
