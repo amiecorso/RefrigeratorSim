@@ -2,7 +2,6 @@ import argparse
 import os
 import pandas as pd
 import subprocess
-import time
 from simulator import Simulator
 
 
@@ -23,8 +22,6 @@ def parse_args():
     parser.add_argument('--clean', default=False, action='store_true',
                         help='Delete the current output data directory before starting simulations.')
     return parser.parse_args()
-
-
 
 
 if __name__ == '__main__':

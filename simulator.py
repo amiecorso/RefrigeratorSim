@@ -171,7 +171,11 @@ class Simulator:
                 num_datapoints_in_avg = self.historicals[timeslotID][1]
             else:
                 num_datapoints_in_avg = 0
-            hist_lookahead_window = min(num_datapoints_in_avg, 8)  # computationally feasible
+
+            if num_datapoints_in_avg >= 2:
+                hist_lookahead_window = min(max(6, num_datapoints_in_avg), 24)
+            else:
+                hist_lookahead_window = min(num_datapoints_in_avg, 24)  # computationally feasible
 
             moer_vector_hist_avg = np.array(self.data['hist_avg_moer_at_time']
                                             [start_timestep + self.lookahead_window:
