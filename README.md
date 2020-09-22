@@ -52,7 +52,7 @@ The PuLP module is used to solve the LP problem.
 
 Objective function to minimize:
 
-    co2_emissions = (MOER_data_of_forecast)*(adjusted_for_fridge_wattage)*(bitmap_of_fridge_status)
+    co2_emissions_proportional = (MOER_data_of_forecast)*(bitmap_of_fridge_status)
     
 Subject to the following constraints, where `X_t` is the temperature of the fridge at time t and `S_t` is the on/off 
 status of the fridge at time t:
@@ -97,6 +97,8 @@ larger number of decision variables in the one-hour forecast window could quickl
 - Consider other linear solvers to potentially improve performance.
 
 The software:
+- Unit tests!!  I tested functionality using a sanity-check no-data graph, and spot-checked functionality with print
+statements, but proper unit tests with a small, fake dataframe should be implemented.
 - Parameterize the model with a config file, making it easier to adjust parameters in one place, such as:
     - The input data path
     - The number of timestep iterations to perform (shorten for quicker testing cycles)
@@ -109,5 +111,4 @@ The software:
 assignments, searching for a more optimal model.
 - Continue to seek out efficiencies where possible, since working with pandas (and Python in general) can be slowwww.
 - Add timestamps to output filenames to avoid overwriting.
-- Unit tests!!
 - Always room for organizational refactors.
