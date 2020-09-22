@@ -25,7 +25,7 @@ From the top-level directory:
 python3 refrigerator_sim.py
 ```
 
-The simulation will take several minutes to complete.
+The simulation will take several minutes to complete (~4 min 45 sec on Macbook with 2.4 GHz Quad-Core Intel Core i5).
 The result of the simulation can be found in `./output_data`, and includes a CSV file and corresponding plot with time
 on the x-axis. (`plots_with_forecasting_and_historical.pdf` and `sim_output_with_forecasting_and_historicals.csv`)
 The plot displays:

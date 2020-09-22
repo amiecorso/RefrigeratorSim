@@ -58,6 +58,7 @@ class Visualizer:
             new_total = cumulative_total + co2
             axs[2].plot([t1, t2], [cumulative_total, new_total], 'b')
             cumulative_total = new_total
+        cumulative_total += data['lbs_co2'][data.shape[0] - 1] # don't forget last entry that's getting lost by the zip
         axs[2].set_ylabel('Cumulative \nlbs CO2', rotation=0, labelpad=42)
 
         axs[2].set_xlabel('Elapsed Time (min)')
@@ -68,12 +69,6 @@ class Visualizer:
         axs[2].set_xticklabels(xtick_labels, rotation=50, fontsize=8)
 
         fig.tight_layout()
-
-        fridge_on_subset = data.loc[data['fridge_on'] == True]
-        total_run_time = fridge_on_subset.shape[0] * self.simulator.size_of_timestep
-        print("=" * 50)
-        print("Total refrigerator run time: ", total_run_time, " mins")
-        print("Total lbs CO2 emitted: ", cumulative_total)
 
         axs[2].text(0.95, 0.01, 'Total lbs CO2 emitted: ' + str(round(cumulative_total, 4)),
                     verticalalignment='bottom', horizontalalignment='right',

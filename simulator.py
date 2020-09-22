@@ -24,6 +24,7 @@ class Simulator:
         self.visualizer = Visualizer(self)
         self.fridge = Refrigerator()
         self.historicals = {}
+        self.total_lbs_co2 = 0
         self.size_of_timestep = 5  # size of one timestep in minutes
         self.lookahead_window = int(60 / self.size_of_timestep)  # timesteps in one hour
         self.current_time = 0
@@ -62,6 +63,7 @@ class Simulator:
             self._update_historical_avgs(timestep)
 
         self.outfile.close()
+        self._report_co2()
         self._end_timer(start_time, 'no_data')
 
         print("\nGenerating matplotlib plots (~30s)...")
@@ -90,6 +92,7 @@ class Simulator:
             self.fridge.current_timestamp = self.current_time
 
         self.outfile.close()
+        self._report_co2()
         self._end_timer(start_time, 'forecast_only')
         print("\nGenerating matplotlib plots (~30s)...")
         self.visualizer.plot(output_filename)
@@ -121,6 +124,7 @@ class Simulator:
             self._update_historical_avgs(timestep)
 
         self.outfile.close()
+        self._report_co2()
         self._end_timer(start_time, 'forecast_and_historical')
         print("\nGenerating matplotlib plots (~30s)...")
         self.visualizer.plot(output_filename)
@@ -208,6 +212,7 @@ class Simulator:
         self.fridge = Refrigerator()
         self.historicals = {}
         self.current_time = 0
+        self.total_lbs_co2 = 0
         self.data['hist_avg_moer_at_time'] = 0
         output_filename = self.output_dir.rstrip("/") + "/" + "sim_output_" + sim_id + ".csv"
         self.outfile = open(output_filename, 'w')
@@ -252,6 +257,7 @@ class Simulator:
             lbs_co2 = 0
         else:
             lbs_co2 = self._lbs_co2_from_moer(moer)
+        self.total_lbs_co2 += lbs_co2
         hist_avg_moer = self.data.iloc[timestep]['hist_avg_moer_at_time']
 
         row_data = [self.current_time, round(self.fridge.current_temp, 2), self.fridge.on, moer, lbs_co2,
@@ -269,6 +275,11 @@ class Simulator:
         megawatts_per_watt = 1 / 1000000
         hours_per_minute = 1 / 60
         return round(moer * (self.fridge.wattage * megawatts_per_watt) * (self.size_of_timestep * hours_per_minute), 8)
+
+    def _report_co2(self):
+        print("=" * 50)
+        print("Total refrigerator run time: ", self.current_time, " mins")
+        print("Total lbs CO2 emitted: ", self.total_lbs_co2)
 
     def _end_timer(self, start_time, sim_id):
         """ Prints a formatted message indicating time elapsed since start_time for the simulation identified by sim_id.
