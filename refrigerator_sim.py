@@ -2,6 +2,7 @@ import argparse
 import os
 import pandas as pd
 import subprocess
+import sys
 from simulator import Simulator
 
 
@@ -29,8 +30,9 @@ if __name__ == '__main__':
 
     # Create output dir for artifact collection
     output_dir = "./output_data/"
-    if args.clean:
+    if args.clean and len(sys.argv) == 2:
         subprocess.run(["rm", "-rf", output_dir])
+        exit(0)
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
 
@@ -53,7 +55,7 @@ if __name__ == '__main__':
 
     if args.moer_avgs:
         simulator.plot_moer_avgs()
-        exit(1)
+        exit(0)
 
     if args.no_data or args.all:
         simulator.run_without_data()
