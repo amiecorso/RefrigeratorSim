@@ -4,6 +4,7 @@ import time
 from refrigerator import Refrigerator
 from visualizer import Visualizer
 
+
 class Simulator:
     """ A simulator for modeling a simplified Automated Emissions Reduction (AER) algorithm applied to a smart plug.
     See: https://www.watttime.org/aer/ for more about AER.
@@ -66,8 +67,8 @@ class Simulator:
         self.outfile.close()
         self._end_timer(start_time, 'no_data')
 
-        #print(self.data.head(10))
-        #print("HIST: ", self.historicals)
+        # print(self.data.head(10))
+        # print("HIST: ", self.historicals)
         print("\nGenerating matplotlib plots (~30s)...")
         if not suppress_plot:
             self.visualizer.plot(output_filename)
@@ -92,9 +93,6 @@ class Simulator:
             self.fridge.current_temp = self.fridge.expected_temp(self.current_time + self.size_of_timestep)
             self.current_time += self.size_of_timestep
             self.fridge.current_timestamp = self.current_time
-
-            # update historicals dictionary and dataframe row
-            self._update_historical_avgs(timestep)
 
         self.outfile.close()
         self._end_timer(start_time, 'forecast_only')
@@ -128,7 +126,6 @@ class Simulator:
             self._update_historical_avgs(timestep)
 
         self.outfile.close()
-        print(self.data.tail(5))
         self._end_timer(start_time, 'forecast_and_historical')
         print("\nGenerating matplotlib plots (~30s)...")
         self.visualizer.plot(output_filename)
@@ -154,16 +151,8 @@ class Simulator:
         moer_vector = self.np_moer_vector[start_timestep: start_timestep + self.lookahead_window]
 
         if use_historicals:
-            # how much historical average data should be used?
-            # - no more than an hour?  two hours?
-            # - the refrigerator can last for a maximum of two hours in the off position if it starts at 33 degrees...
-            # - so insight beyond two hours could be useful, but probably not a whole lot more than that.
-            # One hour corresponds to 12 timestamps
-            # by the end of the simulation, we'll have ~ (1440 mins per day / 5 mins per timesteps) = 288 timesteps per day
-            # 9000 timesteps / 288 timesteps per day = ~31 datapoints per historical average by end of sim
-            # so maybe the hist-avg lookahead length can be proportional in timesteps to the number of values used in the average...
-            # shorter as we have less info, longer as we get more info, eventually extending to 31 timesteps or 2.6 hours past the
-            # official lookahead window
+            # extend the forecast window using historical averages as predicted MOERs
+            # extend the forecast window in proportion to the quality of the average (number datapoints used to calc)
             timeslotID = self.data['timeslotID'][start_timestep]
             if timeslotID in self.historicals:
                 num_datapoints_in_avg = self.historicals[timeslotID][1]
@@ -174,7 +163,7 @@ class Simulator:
 
             moer_vector_hist_avg = np.array(self.data['hist_avg_moer_at_time']
                                             [start_timestep + self.lookahead_window:
-                                                    start_timestep + self.lookahead_window + hist_lookahead_window])
+                                             start_timestep + self.lookahead_window + hist_lookahead_window])
             moer_vector = np.concatenate((moer_vector, moer_vector_hist_avg))
 
         variable_suffixes = [str(i) for i in range(moer_vector.size)]
@@ -260,14 +249,14 @@ class Simulator:
     def _generate_output_row(self, timestep):
         """ Writes a single row of data to output csv file.
 
-        :param data_row: a pandas series, the row of data corresponding to the current simulation timestep
+        :param timestep: the current timestep (data row index)
         """
-        moer = self.data[timestep]['MOER']
+        moer = self.data.iloc[timestep]['MOER']
         if not self.fridge.on:
             lbs_co2 = 0
         else:
             lbs_co2 = self._lbs_co2_from_moer(moer)
-        hist_avg_moer = self.data[timestep]['hist_avg_moer_at_time']
+        hist_avg_moer = self.data.iloc[timestep]['hist_avg_moer_at_time']
 
         row_data = [self.current_time, round(self.fridge.current_temp, 2), self.fridge.on, moer, lbs_co2,
                     hist_avg_moer]

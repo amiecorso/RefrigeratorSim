@@ -25,24 +25,30 @@ From the top-level directory:
 python3 refrigerator_sim.py
 ```
 
-For additional command line options:
-```bash
-python3 refrigerator_sim.py --help
-```
-
 The simulation will take several minutes to complete.
 The result of the simulation can be found in `./output_data`, and includes a CSV file and corresponding plot with time
-on the x-axis.
+on the x-axis. (`plots_with_forecasting_and_historical.pdf` and `sim_output_with_forecasting_and_historicals.csv`)
 The plot displays:
 - The temperature of the refrigerator at each timestep, color-coded by whether the fridge was on or off at that time.
 - The current MOER of the grid at each time. 
 - Cumulative pounds of CO2 associated with the refrigerator’s energy consumption since the start of the simulation.
 
+For additional command line options:
+```bash
+python3 refrigerator_sim.py --help
+```
+Which displays options for running two other models, one sanity check model that incorporates no data at all, and
+a model that uses only the forecast window and no historical averages (plot and data artifacts are also output to 
+`./output_data` and named accordingly).  It is also possible to create a plot of the average MOERs at each time step 
+(used to realize that the MOERs follow a daily pattern), and to control the number of timesteps that are executed, 
+for speeding up testing rounds.
+
 ## Model Description
 At a high level, the model chooses what to do (turn the fridge on or off) at each timestep by formulating the one-hour
 forecast window as a linear programming problem and finding an optimal solution within the forecast window.  The first 
 step of this optimal solution is then taken, at which time the simulation (and forecast horizon) has advanced one step.
-The process is repeated with the new forecast. The PuLP module is used to solve the LP problem.
+The process is repeated with the new information that can now be included in the forecast. 
+The PuLP module is used to solve the LP problem.
 
 Objective function to minimize:
 
@@ -63,7 +69,10 @@ are constructed from historical data occurring at the same time of day.
 
 The historical average is used as the predicted MOER in order to extend the length of the forecast window in the linear 
 programming problem, placing more emphasis on these historical predictions as the number of datapoints included in the 
-average increases. 
+average increases. Considering that the fridge can remain off for two hours when at its coldest setting (33 degrees),
+it would probably benefit from forecasts extending at least two hours into the future (though perhaps not significantly
+more than this...).  However, in order to keep the simulation run time below 5 minutes, the maximum achievable 
+forecast window was only about 90 minutes into the future. 
 
 
 ## Future improvements
@@ -74,8 +83,12 @@ The model:
 - Experiment with greater timestamp granularity for decision-making.  I used the timestep size provided in the MOER data
 (5 minutes).  However, a more granular dataset could be created and would potentially provide better results, though the
 larger number of decision variables in the one-hour forecast window could quickly make this computationally infeasible.
-- Experiment with the number of predicted MOERs included in the forecast window by way of historical averages.
-- Incorporate the first day’s pre-simulation data to populate the historical averages
+- Experiment with the number of predicted MOERs included in the forecast window as historical averages.
+  (Though this has already run up against computational time limits.)
+- Experiment with the granularity at which averages are collected.  This model uses the same 5-minute granularity of
+    a timestep, however it might make sense to use larger "buckets" such as one hour.
+- Incorporate the first day’s pre-simulation data to populate the historical averages (just ran out of time)
+- Consider other linear solvers to potentially improve performance.
 
 The software:
 - Parameterize the model with a config file, making it easier to adjust parameters in one place, such as:
@@ -88,6 +101,7 @@ The software:
     - How far into the future to use historical average data
 - Use this config design to create a driver program capable of running the simulation under many different parameter
 assignments, searching for a more optimal model.
+- Continue to seek out efficiencies where possible, since working with pandas (and Python in general) can be slowwww.
 - Add timestamps to output filenames to avoid overwriting.
 - Unit tests!!
 - Always room for organizational refactors.
