@@ -28,15 +28,15 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
 
-    # Create output dir for artifact collection
     output_dir = "./output_data/"
     if args.clean and len(sys.argv) == 2:
         subprocess.run(["rm", "-rf", output_dir])
         exit(0)
+    # Create output dir for file collection
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
 
-    # Read initial MOER data and cut off first day pre 3-1
+    # Read initial MOER data and cut off first day (pre 3-1)
     all_moer_data = pd.read_csv(args.data_path)
     initial_historical_data = all_moer_data[:288]
     sim_moer_data = all_moer_data[288:-1].reset_index(drop=True)
@@ -46,10 +46,11 @@ if __name__ == '__main__':
         args.timesteps = sim_moer_data.shape[0]
     else:
         args.timesteps = int(args.timesteps)
+
     simulator = Simulator(sim_moer_data, output_dir, args.timesteps)
 
     # Run simulations based on arguments supplied at command line.
-    # No args defaults to run_with_forecast_and_historical.
+    # No args defaults to most successful model, run_with_forecast_and_historical.
     if not args.no_data and not args.forecast_only and not args.forecast_and_history:
         args.forecast_and_history = True
 
