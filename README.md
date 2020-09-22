@@ -74,6 +74,12 @@ it would probably benefit from forecasts extending at least two hours into the f
 more than this...).  However, in order to keep the simulation run time below 5 minutes, the maximum achievable 
 forecast window was only about 90 minutes into the future. 
 
+## Summary of Results
+Using no data, the fridge simply warms and cools like a thermostat: 26.7 lbs CO2 emitted
+
+Using only the 1-hour accurate forecast: 21.2 lbs CO2 emitted (~21% reduction)
+
+Using the 1-hour forecast and an extended lookahead with historical averages: 20.1 lbs CO2 emitted (~24.5% reduction)
 
 ## Future improvements
 

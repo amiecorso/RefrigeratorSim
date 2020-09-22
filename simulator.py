@@ -42,7 +42,7 @@ class Simulator:
         """
         start_time = time.time()
         output_filename = self._prepare_new_simulation("no_forecasting")
-        print("Running simulation (no data)...")
+        print("\nRunning simulation (no data)...")
 
         for timestep in range(self.number_timesteps_to_process):
             expected_temp = self.fridge.expected_temp(self.current_time + self.size_of_timestep)
@@ -78,7 +78,7 @@ class Simulator:
         """ Perform a simulation that takes into account only the 1-hour forecast window to minimize CO2 emissions."""
         start_time = time.time()
         output_filename = self._prepare_new_simulation("with_forecasting")
-        print("Running simulation (forecast only)...")
+        print("\nRunning simulation (forecast only)...")
 
         for timestep in range(self.number_timesteps_to_process):
             decision = self._get_next_decision(timestep)  # <-- all the action
@@ -106,7 +106,7 @@ class Simulator:
         """
         start_time = time.time()
         output_filename = self._prepare_new_simulation("with_forecasting_and_historicals")
-        print("Running simulation (forecast and historical)...")
+        print("\nRunning simulation (forecast and historical)...")
 
         for timestep in range(self.number_timesteps_to_process):
             decision = self._get_next_decision(timestep, use_historicals=True)  # <-- all the action
