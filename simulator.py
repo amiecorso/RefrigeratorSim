@@ -1,11 +1,8 @@
 from pulp import *
 import numpy as np
-import pandas as pd
 import time
 from refrigerator import Refrigerator
 from visualizer import Visualizer
-
-pd.set_option('mode.chained_assignment', None)
 
 class Simulator:
     """ A simulator for modeling a simplified Automated Emissions Reduction (AER) algorithm applied to a smart plug.
@@ -54,8 +51,7 @@ class Simulator:
                 self.fridge.turn_on()
 
             # write csv row for this timestep
-            data_row = self.data.iloc[timestep]
-            self._generate_output_row(data_row)
+            self._generate_output_row(timestep)
 
             self.fridge.current_temp = self.fridge.expected_temp(self.current_time + self.size_of_timestep)
             self.current_time += self.size_of_timestep
@@ -69,6 +65,9 @@ class Simulator:
 
         self.outfile.close()
         self._end_timer(start_time, 'no_data')
+
+        #print(self.data.head(10))
+        #print("HIST: ", self.historicals)
         print("\nGenerating matplotlib plots (~30s)...")
         if not suppress_plot:
             self.visualizer.plot(output_filename)
@@ -88,8 +87,7 @@ class Simulator:
                 self.fridge.turn_on()
 
             # write csv row for this timestep
-            data_row = self.data.iloc[timestep]
-            self._generate_output_row(data_row)
+            self._generate_output_row(timestep)
 
             self.fridge.current_temp = self.fridge.expected_temp(self.current_time + self.size_of_timestep)
             self.current_time += self.size_of_timestep
@@ -120,8 +118,7 @@ class Simulator:
                 self.fridge.turn_on()
 
             # write csv row for this timestep
-            data_row = self.data.iloc[timestep]
-            self._generate_output_row(data_row)
+            self._generate_output_row(timestep)
 
             self.fridge.current_temp = self.fridge.expected_temp(self.current_time + self.size_of_timestep)
             self.current_time += self.size_of_timestep
@@ -131,6 +128,7 @@ class Simulator:
             self._update_historical_avgs(timestep)
 
         self.outfile.close()
+        print(self.data.tail(5))
         self._end_timer(start_time, 'forecast_and_historical')
         print("\nGenerating matplotlib plots (~30s)...")
         self.visualizer.plot(output_filename)
@@ -172,10 +170,7 @@ class Simulator:
             else:
                 num_datapoints_in_avg = 0
 
-            if num_datapoints_in_avg >= 2:
-                hist_lookahead_window = min(max(6, num_datapoints_in_avg), 24)
-            else:
-                hist_lookahead_window = min(num_datapoints_in_avg, 24)  # computationally feasible
+            hist_lookahead_window = min(num_datapoints_in_avg, 6)  # computationally feasible
 
             moer_vector_hist_avg = np.array(self.data['hist_avg_moer_at_time']
                                             [start_timestep + self.lookahead_window:
@@ -183,14 +178,16 @@ class Simulator:
             moer_vector = np.concatenate((moer_vector, moer_vector_hist_avg))
 
         variable_suffixes = [str(i) for i in range(moer_vector.size)]
-        decision_variables = LpVariable.matrix("status", variable_suffixes, cat="Binary")
+        # s for status (on/off)
+        decision_variables = LpVariable.matrix("s", variable_suffixes, cat="Binary")
         status_vector = np.array(decision_variables)
 
+        # Set up objective function
         obj_func = lpSum(status_vector * moer_vector)
         model += obj_func
 
-        temp_variables = LpVariable.matrix("temp", variable_suffixes, cat="Continuous")
-
+        # Set up constraints
+        temp_variables = LpVariable.matrix("t", variable_suffixes, cat="Continuous")
         for i in range(moer_vector.size - 1):
             model += temp_variables[i + 1] == temp_variables[i] + \
                      self.fridge.cooling_rate * self.size_of_timestep * status_vector[i] + \
@@ -198,13 +195,9 @@ class Simulator:
             model += 33 <= temp_variables[i + 1] <= 43
         model += temp_variables[0] == self.fridge.current_temp  # starting temp of fridge
 
-        # print(model)
         model.solve(PULP_CBC_CMD(msg=False))
 
-        # print(LpStatus[model.status])
-        # print("status_0 value: ", model.variablesDict()['status_0'].value())
-
-        return model.variablesDict()['status_0'].value()
+        return model.variablesDict()['s_0'].value()
 
     def _add_synthetic_fields_to_dataframe(self):
         """ Adds several calculated fields to the initial data table (self.data) created from the .csv file:
@@ -255,21 +248,26 @@ class Simulator:
         # Update running average for this time of day
         self.historicals[timeslotID] = (avg, count)
 
-        # Update this timestep with new historical information
-        self.data.iloc[timestep:].loc[self.data.timeslotID == timeslotID, 'hist_avg_moer_at_time'] = avg
+        # Update new historical average to NEXT equivalent timeslot.  As long as the forecast window doesn't exceed 288
+        # timesteps (currently maxing out at 18), then we only ever have to update the one value at a time.
+        # Future values set at this time would be overwritten anyway.  Past values don't matter.
+        timesteps_per_day = 288
+        next_corresponding_timeslot = timestep + timesteps_per_day
+        if next_corresponding_timeslot < self.number_timesteps_to_process:
+            self.data.iloc[next_corresponding_timeslot, self.data.columns.get_loc('hist_avg_moer_at_time')] = avg
         return
 
-    def _generate_output_row(self, data_row):
+    def _generate_output_row(self, timestep):
         """ Writes a single row of data to output csv file.
 
         :param data_row: a pandas series, the row of data corresponding to the current simulation timestep
         """
-        moer = data_row['MOER']
+        moer = self.data[timestep]['MOER']
         if not self.fridge.on:
             lbs_co2 = 0
         else:
             lbs_co2 = self._lbs_co2_from_moer(moer)
-        hist_avg_moer = data_row['hist_avg_moer_at_time']
+        hist_avg_moer = self.data[timestep]['hist_avg_moer_at_time']
 
         row_data = [self.current_time, round(self.fridge.current_temp, 2), self.fridge.on, moer, lbs_co2,
                     hist_avg_moer]

@@ -5,6 +5,7 @@ import pandas as pd
 
 class Visualizer:
     """ A class for visualizing the output data of an AER simulation. """
+
     def __init__(self, simulator):
         """
         :param simulator: A reference to the Simulator object this Visualizer belongs to.
@@ -25,6 +26,9 @@ class Visualizer:
         sim_id = path_to_data.lstrip(self.simulator.output_dir).rstrip('.csv').lstrip('/').lstrip('sim_output_')
 
         fig, axs = plt.subplots(3, 1, sharex=True, gridspec_kw={'hspace': 0})
+        fig.set_size_inches(12, 7)
+        title_suffix = " ".join([string.capitalize() for string in sim_id.split("_")])
+        fig.suptitle("Simple AER Simulation: " + title_suffix)
 
         # plot fridge temp color-coded by on/off
         for t1, t2, status, y1, y2 in zip(data['time'],
@@ -57,12 +61,12 @@ class Visualizer:
         axs[2].set_ylabel('Cumulative \nlbs CO2', rotation=0, labelpad=42)
 
         axs[2].set_xlabel('Elapsed Time (min)')
-        for ax in axs:
-            ax.label_outer()
+        xticks = data['time'][::288 // 2]
+        mapper = map(self._create_xlabel_for_time, xticks)
+        xtick_labels = list(mapper)
+        axs[2].set_xticks(xticks)
+        axs[2].set_xticklabels(xtick_labels, rotation=50, fontsize=8)
 
-        fig.set_size_inches(12, 7)
-        title_suffix = " ".join([string.capitalize() for string in sim_id.split("_")])
-        fig.suptitle("Simple AER Simulation: " + title_suffix)
         fig.tight_layout()
 
         fridge_on_subset = data.loc[data['fridge_on'] == True]
@@ -73,7 +77,7 @@ class Visualizer:
 
         axs[2].text(0.95, 0.01, 'Total lbs CO2 emitted: ' + str(round(cumulative_total, 4)),
                     verticalalignment='bottom', horizontalalignment='right',
-                    transform=ax.transAxes,
+                    transform=axs[2].transAxes,
                     color='green', fontsize=15)
 
         fig.savefig(self.simulator.output_dir.rstrip('/') + '/' + 'plots_' + sim_id + ".pdf")
@@ -95,3 +99,10 @@ class Visualizer:
         fig.tight_layout()
         fig.savefig(self.simulator.output_dir.rstrip('/') + '/' + 'avgMOERs_timestep_granularity.pdf')
         return
+
+    def _create_xlabel_for_time(self, minutes_elapsed):
+        minutes_per_day = 60 * 24
+        day = minutes_elapsed // minutes_per_day
+        hour = (minutes_elapsed % minutes_per_day) // 60
+        minutes = (minutes_elapsed % minutes_per_day) % 60
+        return "3-{} {}:{:0>2d}".format(day, hour, minutes)
