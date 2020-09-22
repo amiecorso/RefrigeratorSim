@@ -61,14 +61,9 @@ class Simulator:
             # update historicals dictionary and dataframe row (need this for moer avgs)
             self._update_historical_avgs(timestep)
 
-        # print("HISTORICALS: ", self.historicals)
-        # print(self.data.head()['hist_avg_moer_at_time'])
-
         self.outfile.close()
         self._end_timer(start_time, 'no_data')
 
-        # print(self.data.head(10))
-        # print("HIST: ", self.historicals)
         print("\nGenerating matplotlib plots (~30s)...")
         if not suppress_plot:
             self.visualizer.plot(output_filename)
@@ -181,7 +176,8 @@ class Simulator:
             model += temp_variables[i + 1] == temp_variables[i] + \
                      self.fridge.cooling_rate * self.size_of_timestep * status_vector[i] + \
                      self.fridge.warming_rate * self.size_of_timestep * (1 - status_vector[i])
-            model += 33 <= temp_variables[i + 1] <= 43
+            model += temp_variables[i + 1] <= 43
+            model += temp_variables[i + 1] >= 33
         model += temp_variables[0] == self.fridge.current_temp  # starting temp of fridge
 
         model.solve(PULP_CBC_CMD(msg=False))

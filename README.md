@@ -2,7 +2,7 @@
 
 ## Overview
 This is a simulator that models the operation of a refrigerator connected to a smart plug, with the goal of minimizing
-the associated CO2 emissions.  The simulation runs for one month, during which time the algorithm governing when to turn
+associated CO2 emissions.  The simulation runs for one month, during which time the algorithm governing when to turn
 the refrigerator on or off has access to a perfect 1-hour forecast of the MOER (Marginal Operating Emissions Rate) of 
 the energy grid.  The algorithm may also use historical data as it becomes available.
 Subject to the following constraints and parameters:
@@ -77,9 +77,9 @@ forecast window was only about 90 minutes into the future.
 ## Summary of Results
 Using no data, the fridge simply warms and cools like a thermostat: 26.7 lbs CO2 emitted
 
-Using only the 1-hour accurate forecast: 21.2 lbs CO2 emitted (~21% reduction)
+Using only the 1-hour accurate forecast: 20.9 lbs CO2 emitted (~21.7% reduction)
 
-Using the 1-hour forecast and an extended lookahead with historical averages: 20.1 lbs CO2 emitted (~24.5% reduction)
+Using the 1-hour forecast and an extended lookahead with historical averages: 20.2 lbs CO2 emitted (~24.3% reduction)
 
 ## Future improvements
 
