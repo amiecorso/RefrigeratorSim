@@ -4,7 +4,7 @@ OUTPUT_FILE = "./ONE_DAY_MOERS.csv"
 print("Generating short dataset at {}.".format(OUTPUT_FILE))
 
 with open("./MOERS.csv") as moerdata:
-    moerdata.readline()  # headers
+    headers = moerdata.readline()
     data = moerdata.readlines()
 
     # decide how much data to grab
@@ -18,4 +18,5 @@ with open("./MOERS.csv") as moerdata:
     with open(OUTPUT_FILE, "w") as short_moerdata:
         # Using the second day in the dataset, as the first day is "training data" and not part of the final sim
         short_data = data[288:288 + 288]
+        short_moerdata.write(headers)
         short_moerdata.writelines(short_data)
