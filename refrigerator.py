@@ -3,7 +3,9 @@ class Refrigerator:
 
     def __init__(self):
         self.on = False
-        self.current_temp = 33  # Fahrenheit
+        self.max_temp = 43
+        self.min_temp = 33
+        self.current_temp = 33  # Fahrenheit, starts here at beginning of sim
         self.current_timestamp = 0  # minutes
         self.warming_rate = 5/60  # degrees/minute
         self.cooling_rate = -10/60  # degrees/minute

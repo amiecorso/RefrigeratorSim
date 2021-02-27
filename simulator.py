@@ -25,8 +25,8 @@ class Simulator:
         self.fridge = Refrigerator()
         self.historicals = {}
         self.total_lbs_co2 = 0
-        self.size_of_timestep = 5  # size of one timestep in minutes
-        self.lookahead_window = int(60 / self.size_of_timestep)  # timesteps in one hour
+        self.mins_per_timestep = 5  # size of one timestep in minutes
+        self.lookahead_window = int(60 / self.mins_per_timestep)  # timesteps in one hour
         self.current_time = 0
         self.output_dir = output_dir
         self.number_timesteps_to_process = num_timesteps
@@ -46,7 +46,7 @@ class Simulator:
         print("\nRunning simulation (no data)...")
 
         for timestep in range(self.number_timesteps_to_process):
-            expected_temp = self.fridge.expected_temp(self.current_time + self.size_of_timestep)
+            expected_temp = self.fridge.expected_temp(self.current_time + self.mins_per_timestep)
             if expected_temp <= 33:
                 self.fridge.turn_off()
             elif expected_temp >= 43:
@@ -55,8 +55,8 @@ class Simulator:
             # write csv row for this timestep
             self._generate_output_row(timestep)
 
-            self.fridge.current_temp = self.fridge.expected_temp(self.current_time + self.size_of_timestep)
-            self.current_time += self.size_of_timestep
+            self.fridge.current_temp = self.fridge.expected_temp(self.current_time + self.mins_per_timestep)
+            self.current_time += self.mins_per_timestep
             self.fridge.current_timestamp = self.current_time
 
             # update historicals dictionary and dataframe row (need this for moer avgs)
@@ -87,8 +87,8 @@ class Simulator:
             # write csv row for this timestep
             self._generate_output_row(timestep)
 
-            self.fridge.current_temp = self.fridge.expected_temp(self.current_time + self.size_of_timestep)
-            self.current_time += self.size_of_timestep
+            self.fridge.current_temp = self.fridge.expected_temp(self.current_time + self.mins_per_timestep)
+            self.current_time += self.mins_per_timestep
             self.fridge.current_timestamp = self.current_time
 
         self.outfile.close()
@@ -107,17 +107,22 @@ class Simulator:
         print("\nRunning simulation (forecast and historical)...")
 
         for timestep in range(self.number_timesteps_to_process):
-            decision = self._get_next_decision(timestep, use_historicals=True)  # <-- all the action
-            if decision == 0:
-                self.fridge.turn_off()
+            if (self.np_moer_vector[timestep] == 0 and
+                    self.fridge.expected_temp(self.current_time + self.mins_per_timestep) > self.fridge.min_temp):
+                self.fridge.turn_on()  # if the MOERS are free, and the fridge isn't too cold, turn on.
+
             else:
-                self.fridge.turn_on()
+                decision = self._get_next_decision(timestep, use_historicals=True)  # <-- all the action
+                if decision == 0:
+                    self.fridge.turn_off()
+                else:
+                    self.fridge.turn_on()
 
             # write csv row for this timestep
             self._generate_output_row(timestep)
 
-            self.fridge.current_temp = self.fridge.expected_temp(self.current_time + self.size_of_timestep)
-            self.current_time += self.size_of_timestep
+            self.fridge.current_temp = self.fridge.expected_temp(self.current_time + self.mins_per_timestep)
+            self.current_time += self.mins_per_timestep
             self.fridge.current_timestamp = self.current_time
 
             # update historicals dictionary and dataframe row
@@ -178,10 +183,10 @@ class Simulator:
         temp_variables = LpVariable.matrix("t", variable_suffixes, cat="Continuous")
         for i in range(moer_vector.size - 1):
             model += temp_variables[i + 1] == temp_variables[i] + \
-                     self.fridge.cooling_rate * self.size_of_timestep * status_vector[i] + \
-                     self.fridge.warming_rate * self.size_of_timestep * (1 - status_vector[i])
-            model += temp_variables[i + 1] <= 43
-            model += temp_variables[i + 1] >= 33
+                     self.fridge.cooling_rate * self.mins_per_timestep * status_vector[i] + \
+                     self.fridge.warming_rate * self.mins_per_timestep * (1 - status_vector[i])
+            model += temp_variables[i + 1] <= self.fridge.max_temp
+            model += temp_variables[i + 1] >= self.fridge.min_temp
         model += temp_variables[0] == self.fridge.current_temp  # starting temp of fridge
 
         model.solve(PULP_CBC_CMD(msg=False))
@@ -274,7 +279,7 @@ class Simulator:
         """
         megawatts_per_watt = 1 / 1000000
         hours_per_minute = 1 / 60
-        return round(moer * (self.fridge.wattage * megawatts_per_watt) * (self.size_of_timestep * hours_per_minute), 8)
+        return round(moer * (self.fridge.wattage * megawatts_per_watt) * (self.mins_per_timestep * hours_per_minute), 8)
 
     def _report_co2(self):
         print("=" * 50)
