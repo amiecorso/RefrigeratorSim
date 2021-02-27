@@ -9,12 +9,12 @@ from simulator import Simulator
 def parse_args():
     """ Parses command line arguments """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--all', action='store_true', default=False, help='Run all three models.')
     parser.add_argument('--no_data', action='store_true', default=False, help='Run model using no data.')
     parser.add_argument('--forecast_only', action='store_true', default=False,
                         help='Run model using 1-hr forecast window.')
     parser.add_argument('--forecast_and_history', action='store_true', default=False,
                         help='Run model using 1-hr forecast and historical avgs.')
+    parser.add_argument('--all', action='store_true', default=False, help='Run all three models.')
     parser.add_argument('--moer_avgs', action='store_true', default=False,
                         help='Produce plot of average MOER data.')
     parser.add_argument('--data_path', action='store', default='MOER_data/MOERS.csv', help='Path to dataset.')
@@ -29,9 +29,12 @@ if __name__ == '__main__':
     args = parse_args()
 
     output_dir = "./output_data/"
+
+    # Clean first?
     if args.clean and len(sys.argv) == 2:
         subprocess.run(["rm", "-rf", output_dir])
         exit(0)
+
     # Create output dir for file collection
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
