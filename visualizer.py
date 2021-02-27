@@ -15,15 +15,15 @@ class Visualizer:
     def plot(self, path_to_data):
         """ Generate and save a pdf plot displaying simulation results including:
                 - The internal temperature of the refrigerator, as a function of time
-                - The MOER data at each timestep of the simulation.
-                - The cumulative total lbs of CO2 that the refrigerator has consumed as a function of time.
+                - The MOER data at each timestep of the simulation
+                - The cumulative total lbs of CO2 that the refrigerator has consumed as a function of time
 
         Note: plot will be saved in output directory specified in Simulator object.
 
         :param path_to_data: the path to the csv file containing simulation data.
         """
         data = pd.read_csv(path_to_data)
-        sim_id = path_to_data.lstrip(self.simulator.output_dir).rstrip('.csv').lstrip('/').lstrip('sim_output_')
+        sim_id = path_to_data.lstrip(self.simulator.output_dir).rstrip('.csv').lstrip('/sim_output_')
 
         fig, axs = plt.subplots(3, 1, sharex=True, gridspec_kw={'hspace': 0})
         fig.set_size_inches(12, 7)
