@@ -8,11 +8,6 @@ from visualizer import Visualizer
 class Simulator:
     """ A simulator for modeling a simplified Automated Emissions Reduction (AER) algorithm applied to a smart plug.
     See: https://www.watttime.org/aer/ for more about AER.
-
-    Methods:
-        run_without_data()
-        run_with_forecast()
-        run_with_forecast_and_historical()
     """
 
     def __init__(self, moer_data, output_dir, num_timesteps):
@@ -34,115 +29,70 @@ class Simulator:
         self.np_moer_vector = self.data["MOER"].to_numpy()
         self._add_synthetic_fields_to_dataframe()
 
-    def run_without_data(self, suppress_plot=False):
-        """ Runs the simulation using no MOER data.  Should result in a saw-shaped graph as the refrigerator merely
-        warms until reaching maximum temperature, at which time it kicks on and cools to minimum temperature, repeat.
-
-        :param suppress_plot: Whether or not to suppres production of a matpotlib plot, defaults to False.
-        :return: The name of the data output file, for consumption by method Simulator.plot_moer_avgs.
+    def run(self, *, use_zeroes=False, use_forecast=False, use_hist=False):
         """
+        TODO: doc me!
+        """
+        if use_hist and not use_forecast:
+            raise Exception("If historical averages are being used, forecast window must be too.")
+
         start_time = time.time()
-        output_filename = self._prepare_new_simulation("no_forecasting")
-        print("\nRunning simulation (no data)...")
+        output_filename = self._get_output_filename(use_zeroes, use_forecast, use_hist)
+        self._prepare_new_simulation(output_filename)
 
         for timestep in range(self.number_timesteps_to_process):
+            made_decision = False
+            # the expected temp if the fridge continues in its current state (on/off) for another timestep
             expected_temp = self.fridge.expected_temp(self.current_time + self.mins_per_timestep)
-            if expected_temp <= 33:
-                self.fridge.turn_off()
-            elif expected_temp >= 43:
-                self.fridge.turn_on()
 
-            # write csv row for this timestep
-            self._generate_output_row(timestep)
+            if use_zeroes:
+                if self.np_moer_vector[timestep] == 0:
+                    if expected_temp > self.fridge.min_temp:
+                        self.fridge.turn_on()  # if the MOERS are free and the fridge isn't too cold, turn on!
+                    else:
+                        self.fridge.turn_off()  # we HAVE to turn off, getting too cold
+                    made_decision = True
 
-            self.fridge.current_temp = self.fridge.expected_temp(self.current_time + self.mins_per_timestep)
-            self.current_time += self.mins_per_timestep
-            self.fridge.current_timestamp = self.current_time
-
-            # update historicals dictionary and dataframe row (need this for moer avgs)
-            self._update_historical_avgs(timestep)
-
-        self.outfile.close()
-        self._report_co2()
-        self._end_timer(start_time, 'no_data')
-
-        print("\nGenerating matplotlib plots (~30s)...")
-        if not suppress_plot:
-            self.visualizer.plot(output_filename)
-        return output_filename
-
-    def run_with_forecast(self):
-        """ Perform a simulation that takes into account only the 1-hour forecast window to minimize CO2 emissions."""
-        start_time = time.time()
-        output_filename = self._prepare_new_simulation("with_forecasting")
-        print("\nRunning simulation (forecast only)...")
-
-        for timestep in range(self.number_timesteps_to_process):
-            decision = self._get_next_decision(timestep)  # <-- all the action
-            if decision == 0:
-                self.fridge.turn_off()
-            else:
-                self.fridge.turn_on()
-
-            # write csv row for this timestep
-            self._generate_output_row(timestep)
-
-            self.fridge.current_temp = self.fridge.expected_temp(self.current_time + self.mins_per_timestep)
-            self.current_time += self.mins_per_timestep
-            self.fridge.current_timestamp = self.current_time
-
-        self.outfile.close()
-        self._report_co2()
-        self._end_timer(start_time, 'forecast_only')
-        print("\nGenerating matplotlib plots (~30s)...")
-        self.visualizer.plot(output_filename)
-        return
-
-    def run_with_forecast_and_historical(self):
-        """ Perform a simulation that takes into account both the 1-hour forecast window of MOER data, as well as
-        historical MOER data as the simulation progresses.
-        """
-        start_time = time.time()
-        output_filename = self._prepare_new_simulation("with_forecasting_and_historicals")
-        print("\nRunning simulation (forecast and historical)...")
-
-        for timestep in range(self.number_timesteps_to_process):
-            if (self.np_moer_vector[timestep] == 0 and
-                    self.fridge.expected_temp(self.current_time + self.mins_per_timestep) > self.fridge.min_temp):
-                self.fridge.turn_on()  # if the MOERS are free, and the fridge isn't too cold, turn on.
-
-            else:
-                decision = self._get_next_decision(timestep, use_historicals=True)  # <-- all the action
+            if use_forecast and not made_decision:
+                decision = self._get_next_decision(timestep, use_historicals=use_hist)  # <-- all the action
                 if decision == 0:
                     self.fridge.turn_off()
                 else:
+                    self.fridge.turn_on()
+                made_decision = True
+
+            if not made_decision:  # case using no data at all
+                if expected_temp <= 33:
+                    self.fridge.turn_off()
+                elif expected_temp >= 43:
                     self.fridge.turn_on()
 
             # write csv row for this timestep
             self._generate_output_row(timestep)
 
+            # update simulator state for next timestep
             self.fridge.current_temp = self.fridge.expected_temp(self.current_time + self.mins_per_timestep)
             self.current_time += self.mins_per_timestep
             self.fridge.current_timestamp = self.current_time
 
-            # update historicals dictionary and dataframe row
+            # update historicals dictionary and dataframe row (even if not using them, in case plot_moer_avgs needs)
             self._update_historical_avgs(timestep)
 
         self.outfile.close()
         self._report_co2()
-        self._end_timer(start_time, 'forecast_and_historical')
+        self._end_timer(start_time, output_filename.lstrip("sim_output_"))
         print("\nGenerating matplotlib plots (~30s)...")
         self.visualizer.plot(output_filename)
-        return
+        return output_filename  # to link the output with this run, used by plot_avg_moers
 
-    def plot_moer_avgs(self):
-        """ Generates a plot of the average MOER data for a given time of day, across duration of simulation."""
-        output_filename = self.run_without_data(suppress_plot=True)
+    def plot_avg_moers(self):
+        """Generates a plot of the average MOER data for a given time of day, across duration of simulation."""
+        output_filename = self.run()  # don't care about the actual simulation here
         self.visualizer.plot_avg_moers(output_filename)
         return
 
     def _get_next_decision(self, start_timestep, use_historicals=False):
-        """ Generates and returns the decision that the refrigerator should make (be off or on) for this timestep.
+        """Generates and returns the decision that the refrigerator should make (be off or on) for this timestep.
         The decision is made by solving a linear programming problem that seeks to minimize CO2 production in the
         forecast window, subject to the temperature constraints in which the refrigerator must remain.
         The first step of the optimal solution is returned.
@@ -207,26 +157,36 @@ class Simulator:
         self.data['hist_avg_moer_at_time'] = 0
         return
 
-    def _prepare_new_simulation(self, sim_id):
-        """ Resets dynamic fields and collections in Simulator object in preparation for a fresh simulation.
+    def _get_output_filename(self, use_zeroes, use_forecast, use_hist):
+        """Generate a descriptive name for simulation output data."""
+        output_suffix = ''
+        if use_zeroes:
+            output_suffix += '_zeroes'
+        if use_forecast:
+            output_suffix += '_forecast'
+        if use_hist:
+            output_suffix += '_hist'
+        if output_suffix == '':
+            output_suffix = '_no_data'
+        return self.output_dir.rstrip("/") + "/" + "sim_output" + output_suffix + ".csv"
 
-        :param sim_id: a String indicating, for filename purposes, which simulation is running:
-                            'no_forecasting', 'with_forecasting`, `with_forecasting_and_historicals`
-        :return: the full output filename, for consumption by the Visualizer.
+    def _prepare_new_simulation(self, output_filename):
+        """Resets dynamic fields and collections in Simulator object in preparation for a fresh simulation.
+
+        :param output_filename: The name of the file that data will be written to during this simulation.
         """
         self.fridge = Refrigerator()
         self.historicals = {}
         self.current_time = 0
         self.total_lbs_co2 = 0
         self.data['hist_avg_moer_at_time'] = 0
-        output_filename = self.output_dir.rstrip("/") + "/" + "sim_output_" + sim_id + ".csv"
         self.outfile = open(output_filename, 'w')
         # write CSV headers
         self.outfile.write("time,fridge_temp,fridge_on,moer,lbs_co2,avg_moer_at_time\n")
-        return output_filename
+        print("\nRunning simulation ({})...".format(output_filename.lstrip("sim_output_")))
 
     def _update_historical_avgs(self, timestep):
-        """ Incorporates the MOER data at this timestep into the running average MOER for all corresponding (same
+        """Incorporates the MOER data at this timestep into the running average MOER for all corresponding (same
         time of day) timesteps.
 
         :param timestep: the index of the current timestep in the simulation data
@@ -253,7 +213,7 @@ class Simulator:
         return
 
     def _generate_output_row(self, timestep):
-        """ Writes a single row of data to output csv file.
+        """Writes a single row of data to output csv file.
 
         :param timestep: the current timestep (data row index)
         """
@@ -272,7 +232,7 @@ class Simulator:
         return
 
     def _lbs_co2_from_moer(self, moer):
-        """ Calculates the lbs of CO2 that would be generated if the refrigerator runs during a timestep with this MOER.
+        """Calculates the lbs of CO2 that would be generated if the refrigerator runs during a timestep with this MOER.
 
         :param moer: the MOER from which to calculate lbs CO2
         :return: the lbs CO2, rounded to 8 decimal places
@@ -287,7 +247,7 @@ class Simulator:
         print("Total lbs CO2 emitted: ", self.total_lbs_co2)
 
     def _end_timer(self, start_time, sim_id):
-        """ Prints a formatted message indicating time elapsed since start_time for the simulation identified by sim_id.
+        """Prints a formatted message indicating time elapsed since start_time for the simulation identified by sim_id.
 
         :param start_time: simulation start time, in seconds
         :param sim_id: a human-readable string identifying the simulation being timed

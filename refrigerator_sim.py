@@ -2,19 +2,23 @@ import argparse
 import os
 import pandas as pd
 import subprocess
-import sys
 from simulator import Simulator
 
 
 def parse_args():
     """ Parses command line arguments """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--no_data', action='store_true', default=False, help='Run model using no data.')
-    parser.add_argument('--forecast_only', action='store_true', default=False,
+    parser.add_argument('--best', action='store_true', default=False,
+                        help='Run best simulation (incorporates zero-moers, forecast, and historicals)')
+    parser.add_argument('--zeroes', action='store_true', default=False,
+                        help='Run model incorporating simple decision on zero-MOER timesteps.')
+    parser.add_argument('--forecast', action='store_true', default=False,
                         help='Run model using 1-hr forecast window.')
-    parser.add_argument('--forecast_and_history', action='store_true', default=False,
+    parser.add_argument('--hist', action='store_true', default=False,
                         help='Run model using 1-hr forecast and historical avgs.')
-    parser.add_argument('--all', action='store_true', default=False, help='Run all three models.')
+    parser.add_argument('--all', action='store_true', default=False,
+                        help='Run all four successively improving models '
+                             '(no data, zeroes only, forecast, forecast and history)')
     parser.add_argument('--moer_avgs', action='store_true', default=False,
                         help='Produce plot of average MOER data.')
     parser.add_argument('--data_path', action='store', default='MOER_data/MOERS.csv', help='Path to dataset.')
@@ -27,19 +31,17 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-
     output_dir = "./output_data/"
 
-    # Clean first?
-    if args.clean and len(sys.argv) == 2:
+    # Clean output directory?
+    if args.clean:
         subprocess.run(["rm", "-rf", output_dir])
-        exit(0)
 
     # Create output dir for file collection
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
 
-    # Read initial MOER data and cut off first day (pre 3-1)
+    # Read initial MOER data and cut off first day (pre 3-1-19)
     all_moer_data = pd.read_csv(args.data_path)
     initial_historical_data = all_moer_data[:288]
     sim_moer_data = all_moer_data[288:-1].reset_index(drop=True)
@@ -53,20 +55,23 @@ if __name__ == '__main__':
     simulator = Simulator(sim_moer_data, output_dir, args.timesteps)
 
     # Run simulations based on arguments supplied at command line.
-    # No args defaults to most successful model, run_with_forecast_and_historical.
-    if not args.no_data and not args.forecast_only and not args.forecast_and_history:
-        args.forecast_and_history = True
 
+    # *Only* create a plot of average moer values at each timestep.
     if args.moer_avgs:
-        simulator.plot_moer_avgs()
+        simulator.plot_avg_moers()
         exit(0)
 
-    if args.no_data or args.all:
-        simulator.run_without_data()
+    # Run all simulations in order of increasing performance
+    if args.all:  # run all simulation options
+        simulator.run()
+        simulator.run(use_zeroes=True)
+        simulator.run(use_zeroes=True, use_forecast=True)
+        simulator.run(use_zeroes=True, use_forecast=True, use_hist=True)
+        exit(0)
 
-    if args.forecast_only or args.all:
-        simulator.run_with_forecast()
+    if args.best:
+        simulator.run(use_zeroes=True, use_forecast=True, use_hist=True)
+        exit(0)
 
-    if args.forecast_and_history or args.all:
-        simulator.run_with_forecast_and_historical()
-
+    # Otherwise, run the simulation as specified on command line.
+    simulator.run(use_zeroes=args.zeroes, use_forecast=args.forecast, use_hist=args.hist)
