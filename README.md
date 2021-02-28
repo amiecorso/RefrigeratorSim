@@ -29,7 +29,7 @@ python3 refrigerator_sim.py --best
 This command runs the most optimal simulation. The simulation will take several minutes to complete (~4.5 minutes on 
 Macbook with 2.4 GHz Quad-Core Intel Core i5). The result of the simulation can be found in `./output_data`, and 
 includes a CSV file and corresponding plot with time on the x-axis. 
-(`plots_seroes_forecast_hist.pdf` and `sim_output_zeroes_forecast_hist.csv`)
+(`plots_zeroes_forecast_hist.pdf` and `sim_output_zeroes_forecast_hist.csv`)
 The plot displays:
 - The temperature of the refrigerator at each timestep, color-coded by whether the fridge was on or off at that time.
 - The current MOER of the grid at each time. 
